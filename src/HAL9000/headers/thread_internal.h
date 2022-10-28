@@ -282,3 +282,5 @@ void
 ThreadSetPriority(
     IN      THREAD_PRIORITY     NewPriority
     );
+
+int getNrOfThreads();

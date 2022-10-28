@@ -70,7 +70,7 @@ SystemInit(
     status = STATUS_SUCCESS;
     pCpu = NULL;
 
-    LogSystemInit(LogLevelInfo,
+    LogSystemInit(LogLevelError,
                   LogComponentInterrupt | LogComponentIo | LogComponentAcpi,
                   TRUE
                   );
@@ -247,6 +247,7 @@ SystemInit(
     LOGL("Successfully intiialized system process!\n");
 
     status = ThreadSystemInitIdleForCurrentCPU();
+    LogSetLevel(LogLevelInfo);
     if (!SUCCEEDED(status))
     {
         LOG_FUNC_ERROR("ThreadSystemInitIdleForCurrentCPU", status);

@@ -10,7 +10,7 @@
 #include "gdtmu.h"
 #include "pe_exports.h"
 
-#define TID_INCREMENT               4
+#define TID_INCREMENT               10
 
 #define THREAD_TIME_SLICE           1
 
@@ -32,10 +32,17 @@ typedef struct _THREAD_SYSTEM_DATA
     _Guarded_by_(AllThreadsLock)
     LIST_ENTRY          AllThreadsList;
 
+    int                 nrOfThreads;
+
     LOCK                ReadyThreadsLock;
 
     _Guarded_by_(ReadyThreadsLock)
     LIST_ENTRY          ReadyThreadsList;
+
+    //added for Threads projects
+    _Guarded_by_(ReadyThreadsLock)
+    THREAD_PRIORITY     RunningThreadsMinPriority;
+
 } THREAD_SYSTEM_DATA, *PTHREAD_SYSTEM_DATA;
 
 static THREAD_SYSTEM_DATA m_threadSystemData;
@@ -121,6 +128,7 @@ _ThreadDereference(
     INOUT   PTHREAD                 Thread
     );
 
+
 static FUNC_FreeFunction            _ThreadDestroy;
 
 static
@@ -142,7 +150,7 @@ ThreadSystemPreinit(
 
     InitializeListHead(&m_threadSystemData.AllThreadsList);
     LockInit(&m_threadSystemData.AllThreadsLock);
-
+    m_threadSystemData.nrOfThreads = 0;
     InitializeListHead(&m_threadSystemData.ReadyThreadsList);
     LockInit(&m_threadSystemData.ReadyThreadsLock);
 }
@@ -170,6 +178,7 @@ ThreadSystemInitMainForCurrentCPU(
     snprintf( mainThreadName, MAX_PATH, "%s-%02x", "main", pCpu->ApicId );
 
     status = _ThreadInit(mainThreadName, ThreadPriorityDefault, &pThread, FALSE);
+    //status = _ThreadInit(mainThreadName, ThreadPriorityDefault, NULL, FALSE);
     if (!SUCCEEDED(status))
     {
         LOG_FUNC_ERROR("_ThreadInit", status );
@@ -642,6 +651,9 @@ ThreadGetId(
 
     return (NULL != pThread) ? pThread->Id : 0;
 }
+int getNrOfThreads() {
+    return m_threadSystemData.nrOfThreads;
+}
 
 THREAD_PRIORITY
 ThreadGetPriority(
@@ -798,6 +810,7 @@ _ThreadInit(
 
         LockAcquire(&m_threadSystemData.AllThreadsLock, &oldIntrState);
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
+        m_threadSystemData.nrOfThreads++;
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
     }
     __finally
@@ -810,7 +823,7 @@ _ThreadInit(
                 pThread = NULL;
             }
         }
-
+        LOG("Thread with id 0x%X and name %s was created", pThread->Id, pThread->Name);
         *Thread = pThread;
 
         LOG_FUNC_END;
@@ -1187,8 +1200,11 @@ _ThreadDestroy(
     ASSERT(NULL != pThread);
     ASSERT(NULL == Context);
 
+    LOG("Thread with id 0x%X and name %s was finished", pThread->Id, pThread->Name);
+
     LockAcquire(&m_threadSystemData.AllThreadsLock, &oldState);
     RemoveEntryList(&pThread->AllList);
+    m_threadSystemData.nrOfThreads--;
     LockRelease(&m_threadSystemData.AllThreadsLock, oldState);
 
     // This must be done before removing the thread from the process list, else

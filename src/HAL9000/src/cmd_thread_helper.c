@@ -128,7 +128,7 @@ void
     STATUS status;
 
     ASSERT(NumberOfParameters == 0);
-
+    LOG("Nr of Threads: %d", getNrOfThreads());
     LOG("%7s", "TID|");
     LOG("%20s", "Name|");
     LOG("%5s", "Prio|");
