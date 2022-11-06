@@ -1,0 +1,12 @@
+diff --git a/src/HAL9000/src/mutex.c b/src/HAL9000/src/mutex.c
+index 57db7e8..7b0bb58 100644
+--- a/src/HAL9000/src/mutex.c
++++ b/src/HAL9000/src/mutex.c
+@@ -105,6 +105,7 @@ MutexRelease(
+     else
+     {
+         Mutex->Holder = NULL;
++        //here is the comment
+     }
+ 
+     _Analysis_assume_lock_released_(*Mutex);

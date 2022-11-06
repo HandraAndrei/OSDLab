@@ -105,7 +105,6 @@ MutexRelease(
     else
     {
         Mutex->Holder = NULL;
-        //here is the comment
     }
 
     _Analysis_assume_lock_released_(*Mutex);
