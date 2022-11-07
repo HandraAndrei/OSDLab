@@ -127,4 +127,8 @@ ThreadComparePriorityReadyList(
     IN_OPT PVOID Context
 );
 
-void ThreadYieldForIpi();
+static
+STATUS
+(__cdecl ThreadYieldForIpi)(
+    IN_OPT PVOID Context
+    );

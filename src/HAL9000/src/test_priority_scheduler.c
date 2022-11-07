@@ -111,6 +111,7 @@ STATUS
     IN_OPT      PVOID       Context
     )
 {
+    LOG("HERE");
     PTEST_PRIORITY_MUTEX_CTX pContext;
     PMUTEX pMutex;
 

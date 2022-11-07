@@ -44,7 +44,7 @@ sub CheckFile
 
     if (not defined $result)
     {
-        my $checker = open($fh, '<', $checkerFileName) ? (close $fh, "perl $checkerFileName") : "fc";
+        my $checker = open($fh, '<', $checkerFileName) ? (close $fh, "perl \"$checkerFileName\"") : "fc";
 
         # do a compare
         system("$checker \"$resultFileName\" \"$expectedFileName\" > \"$outComefileName\"");

@@ -9,7 +9,9 @@
 #include "isr.h"
 #include "gdtmu.h"
 #include "pe_exports.h"
+
 #include "smp.h"
+
 
 #define TID_INCREMENT               10
 
@@ -544,19 +546,15 @@ ThreadUnblock(
     ASSERT(ThreadStateBlocked == Thread->State);
 
     LockAcquire(&m_threadSystemData.ReadyThreadsLock, &dummyState);
-    THREAD_PRIORITY new_prio = ThreadGetPriority(Thread);
-    THREAD_PRIORITY min_prio = m_threadSystemData.RunningThreadsMinPriority;
-    if (new_prio > min_prio) {
-        //preempt
-        SmpSendGenericIpi((PFUNC_IpcProcessEvent)ThreadYieldForIpi,NULL, NULL, NULL, FALSE);
-    }
-    else {
-        //InsertTailList(&m_threadSystemData.ReadyThreadsList, &Thread->ReadyList);
-        InsertOrderedList(&m_threadSystemData.ReadyThreadsList, &Thread->ReadyList, ThreadComparePriorityReadyList, NULL);
-    }
+    
+    //InsertTailList(&m_threadSystemData.ReadyThreadsList, &Thread->ReadyList);
+    InsertOrderedList(&m_threadSystemData.ReadyThreadsList, &Thread->ReadyList, ThreadComparePriorityReadyList, NULL);
+    
     Thread->State = ThreadStateReady;
     LockRelease(&m_threadSystemData.ReadyThreadsLock, dummyState );
     LockRelease(&Thread->BlockLock, oldState);
+
+    SmpSendGenericIpi(ThreadYieldForIpi, NULL, NULL, NULL, FALSE);
 }
 
 void
@@ -686,11 +684,13 @@ ThreadSetPriority(
     INTR_STATE dummyState;
 
     GetCurrentThread()->Priority = NewPriority;
+    
     LockAcquire(&m_threadSystemData.ReadyThreadsLock, &dummyState);
     if (NewPriority < m_threadSystemData.RunningThreadsMinPriority) {
         ThreadYield();
     }
     LockRelease(&m_threadSystemData.ReadyThreadsLock, dummyState);
+    
 
     
 }
@@ -1299,7 +1299,21 @@ ThreadComparePriorityReadyList(
     return 0;
 
 }
-
-void ThreadYieldForIpi() {
+/*
+PFUNC_IpcProcessEvent ThreadYieldForIpi() {
+    PPCPU pCpu = GetCurrentPcpu();
+    pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
+}
+*/
+static
+STATUS
+(__cdecl ThreadYieldForIpi)(
+    IN_OPT PVOID Context
+    )
+{
+    UNREFERENCED_PARAMETER(Context);
+    PPCPU pCpu = GetCurrentPcpu();
+    pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
     ThreadYield();
+    return STATUS_SUCCESS;
 }
