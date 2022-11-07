@@ -2,6 +2,7 @@
 
 #include "thread_defs.h"
 
+
 //******************************************************************************
 // Function:     ThreadCreate
 // Description:  Spawns a new thread named Name with priority Function which
@@ -40,7 +41,6 @@ void
 ThreadYield(
     void
     );
-
 //******************************************************************************
 // Function:     ThreadExit
 // Description:  Causes the current thread to exit. Never returns.
@@ -119,3 +119,12 @@ THREAD_PRIORITY
 ThreadGetPriority(
     IN_OPT  PTHREAD             Thread
     );
+
+INT64
+ThreadComparePriorityReadyList(
+    IN PLIST_ENTRY e1,
+    IN PLIST_ENTRY e2,
+    IN_OPT PVOID Context
+);
+
+void ThreadYieldForIpi();
