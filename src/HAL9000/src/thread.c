@@ -683,14 +683,18 @@ ThreadSetPriority(
 
     INTR_STATE dummyState;
 
+    BOOLEAN shouldYield = FALSE;
+
     GetCurrentThread()->Priority = NewPriority;
     
     LockAcquire(&m_threadSystemData.ReadyThreadsLock, &dummyState);
     if (NewPriority < m_threadSystemData.RunningThreadsMinPriority) {
-        ThreadYield();
+        shouldYield = TRUE;
     }
     LockRelease(&m_threadSystemData.ReadyThreadsLock, dummyState);
-    
+    if (shouldYield) {
+        ThreadYield();
+    }
 
     
 }
@@ -1308,6 +1312,6 @@ STATUS
     UNREFERENCED_PARAMETER(Context);
     PPCPU pCpu = GetCurrentPcpu();
     pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
-    ThreadYield();
+    //ThreadYield();
     return STATUS_SUCCESS;
 }
