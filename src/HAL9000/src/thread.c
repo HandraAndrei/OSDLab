@@ -1299,12 +1299,6 @@ ThreadComparePriorityReadyList(
     return 0;
 
 }
-/*
-PFUNC_IpcProcessEvent ThreadYieldForIpi() {
-    PPCPU pCpu = GetCurrentPcpu();
-    pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
-}
-*/
 static
 STATUS
 (__cdecl ThreadYieldForIpi)(
