@@ -688,15 +688,17 @@ ThreadSetPriority(
     GetCurrentThread()->Priority = NewPriority;
     
     LockAcquire(&m_threadSystemData.ReadyThreadsLock, &dummyState);
-    if (NewPriority < m_threadSystemData.RunningThreadsMinPriority) {
+    PLIST_ENTRY e1 = GetCurrentThread()->ReadyList.Flink;
+    PTHREAD pTh1;
+    pTh1 = CONTAINING_RECORD(e1, THREAD, ReadyList);
+    THREAD_PRIORITY p = ThreadGetPriority(pTh1);
+    if (NewPriority < p) {
         shouldYield = TRUE;
     }
     LockRelease(&m_threadSystemData.ReadyThreadsLock, dummyState);
     if (shouldYield) {
         ThreadYield();
     }
-
-    
 }
 
 STATUS

@@ -1,4 +1,7 @@
 #pragma once
+#include "lock_common.h"
+#include "list.h"
+#include "ex_event.h"
 
 typedef enum _EX_TIMER_TYPE
 {
@@ -20,7 +23,10 @@ typedef struct _EX_TIMER
 
     volatile BOOLEAN    TimerStarted;
     BOOLEAN             TimerUninited;
-} EX_TIMER, *PEX_TIMER;
+
+    EX_EVENT            TimerEvent;
+    LIST_ENTRY          TimerListEvent;
+} EX_TIMER, * PEX_TIMER;
 
 //******************************************************************************
 // Function:     ExTimerInit
@@ -44,13 +50,22 @@ typedef struct _EX_TIMER
 //
 // Initialize an absolute timer after the OS has run 2 minutes:
 // ExTimerInit(&timer, ExTimerTypeAbsolute, 120 * SEC_IN_US);
-//******************************************************************************
+
+
+struct _GLOBAL_TIMER_LIST
+{
+    LOCK            TimerListLock;
+    LIST_ENTRY      TimerListHead;
+};
+
+static struct _GLOBAL_TIMER_LIST m_globalTimerList;
+
 STATUS
 ExTimerInit(
     OUT     PEX_TIMER       Timer,
     IN      EX_TIMER_TYPE   Type,
     IN      QWORD           TimeUs
-    );
+);
 
 //******************************************************************************
 // Function:     ExTimerStart
@@ -62,7 +77,7 @@ ExTimerInit(
 void
 ExTimerStart(
     IN      PEX_TIMER       Timer
-    );
+);
 
 //******************************************************************************
 // Function:     ExTimerStop
@@ -74,7 +89,7 @@ ExTimerStart(
 void
 ExTimerStop(
     IN      PEX_TIMER       Timer
-    );
+);
 
 //******************************************************************************
 // Function:     ExTimerWait
@@ -87,7 +102,7 @@ ExTimerStop(
 void
 ExTimerWait(
     INOUT   PEX_TIMER       Timer
-    );
+);
 
 //******************************************************************************
 // Function:     ExTimerUninit
@@ -100,7 +115,7 @@ ExTimerWait(
 void
 ExTimerUninit(
     INOUT   PEX_TIMER       Timer
-    );
+);
 
 //******************************************************************************
 // Function:     ExTimerCompareTimers
@@ -115,4 +130,27 @@ INT64
 ExTimerCompareTimers(
     IN      PEX_TIMER     FirstElem,
     IN      PEX_TIMER     SecondElem
-    );
+);
+
+void
+ExTimerCheckAll(
+    void
+);
+
+STATUS
+ExTimerCheck(
+    IN PLIST_ENTRY Timer,
+    IN_OPT PVOID context
+);
+
+INT64
+ExTimerCompareListElems(
+    IN PLIST_ENTRY t1,
+    IN PLIST_ENTRY t2,
+    IN_OPT PVOID context
+);
+
+void
+ExTimerSystemPreinit(
+    void
+);
