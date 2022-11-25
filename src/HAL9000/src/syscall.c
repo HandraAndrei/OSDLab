@@ -84,6 +84,32 @@ SyscallHandler(
                 (QWORD*)pSyscallParameters[3]
                 );
             break;
+        case SyscallIdThreadCreate:
+            status = SyscallThreadCreate(
+                (PFUNC_ThreadStart)pSyscallParameters[0],
+                (PVOID)pSyscallParameters[1],
+                (UM_HANDLE*)pSyscallParameters[2]);
+            break;
+        case SyscallIdThreadGetTid:
+            status = SyscallThreadGetTid(
+                (UM_HANDLE)pSyscallParameters[0],
+                (TID*)pSyscallParameters[1]);
+            break;
+        case SyscallIdProcessGetPid:
+            status = SyscallProcessGetPid(
+                (UM_HANDLE)pSyscallParameters[0],
+                (PID*)pSyscallParameters[1]);
+            break;
+        case SyscallIdThreadWaitForTermination :
+            status = SyscallThreadWaitForTermination(
+                (UM_HANDLE)pSyscallParameters[0],
+                (STATUS*)pSyscallParameters[1]);
+            break;
+        case SyscallIdThreadCloseHandle :
+            status = SyscallThreadCloseHandle(
+                (UM_HANDLE)pSyscallParameters[0]);
+            break;
+
         default:
             LOG_ERROR("Unimplemented syscall called from User-space!\n");
             status = STATUS_UNSUPPORTED;
@@ -215,6 +241,55 @@ SyscallThreadExit(
 )
 {
     ThreadExit(ExitStatus);
+    return STATUS_SUCCESS;
+}
+
+STATUS
+SyscallThreadCreate(
+    IN      PFUNC_ThreadStart       StartFunction,
+    IN_OPT  PVOID                   Context,
+    OUT     UM_HANDLE* ThreadHandle
+) {
+    PTHREAD thread = NULL;
+    if (StartFunction == NULL) {
+        return STATUS_UNSUCCESSFUL;
+    }
+    ThreadCreate("name", ThreadPriorityDefault, StartFunction, Context, &thread);
+    ThreadHandle = (UM_HANDLE*)thread;
+    return STATUS_SUCCESS;
+}
+STATUS
+SyscallThreadGetTid(
+    IN_OPT  UM_HANDLE               ThreadHandle,
+    OUT     TID* ThreadId
+) {
+    *ThreadId = ThreadGetId((PTHREAD)ThreadHandle);
+    return STATUS_SUCCESS;
+}
+STATUS
+SyscallThreadWaitForTermination(
+    IN      UM_HANDLE               ThreadHandle,
+    OUT     STATUS* TerminationStatus
+) {
+    ThreadWaitForTermination((PTHREAD)ThreadHandle,&TerminationStatus);
+    return STATUS_SUCCESS;
+}
+
+STATUS
+SyscallThreadCloseHandle(
+    IN      UM_HANDLE               ThreadHandle
+) {
+    ThreadCloseHandle((PTHREAD)ThreadHandle);
+    return STATUS_SUCCESS;
+}
+
+
+STATUS
+SyscallProcessGetPid(
+    IN_OPT  UM_HANDLE               ProcessHandle,
+    OUT     PID* ProcessId
+) {
+    *ProcessId = ProcessGetId((PPROCESS)ProcessHandle);
     return STATUS_SUCCESS;
 }
 
