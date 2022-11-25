@@ -77,8 +77,8 @@ SystemInit(
                   TRUE
                   );
                   */
-    LogSystemInit(LogLevelTrace,
-        LogComponentUserMode,
+    LogSystemInit(LogLevelInfo,
+        LogComponentInterrupt | LogComponentIo | LogComponentAcpi | LogComponentUserMode | LogComponentMmu,
         TRUE
     );
 

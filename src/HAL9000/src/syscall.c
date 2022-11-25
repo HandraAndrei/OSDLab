@@ -7,6 +7,8 @@
 #include "mmu.h"
 #include "process_internal.h"
 #include "dmp_cpu.h"
+#include "thread.h"
+#include "thread_internal.h"
 
 extern void SyscallEntry();
 
@@ -68,6 +70,20 @@ SyscallHandler(
             status = SyscallValidateInterface((SYSCALL_IF_VERSION)*pSyscallParameters);
             break;
         // STUDENT TODO: implement the rest of the syscalls
+        case SyscallIdProcessExit:
+            status = SyscallProcessExit((STATUS)*pSyscallParameters);
+            break;
+        case SyscallIdThreadExit:
+            status = SyscallThreadExit((STATUS)*pSyscallParameters);
+            break;
+        case SyscallIdFileWrite:
+            status = SyscallFileWrite(
+                (UM_HANDLE)pSyscallParameters[0],
+                (PVOID)pSyscallParameters[1],
+                (QWORD)pSyscallParameters[2],
+                (QWORD*)pSyscallParameters[3]
+                );
+            break;
         default:
             LOG_ERROR("Unimplemented syscall called from User-space!\n");
             status = STATUS_UNSUPPORTED;
@@ -170,3 +186,46 @@ SyscallValidateInterface(
 }
 
 // STUDENT TODO: implement the rest of the syscalls
+STATUS
+SyscallFileWrite(
+    IN  UM_HANDLE                   FileHandle,
+    IN_READS_BYTES(BytesToWrite)
+     PVOID                       Buffer,
+    IN  QWORD                       BytesToWrite,
+    OUT QWORD * BytesWritten
+)
+{
+    if (BytesWritten == NULL) {
+        return STATUS_UNSUCCESSFUL;
+        
+    }
+    
+    if (FileHandle == UM_FILE_HANDLE_STDOUT) {
+        *BytesWritten = BytesToWrite;
+        LOG("[%s]:[%s]\n", ProcessGetName(NULL), Buffer);
+        return STATUS_SUCCESS;
+    }
+    *BytesWritten = BytesToWrite;
+    return STATUS_SUCCESS;
+}
+
+STATUS
+SyscallThreadExit(
+    IN  STATUS                      ExitStatus
+)
+{
+    ThreadExit(ExitStatus);
+    return STATUS_SUCCESS;
+}
+
+STATUS
+SyscallProcessExit(
+    IN      STATUS                  ExitStatus
+)
+{
+    PPROCESS Process;
+    Process = GetCurrentProcess();
+    Process->TerminationStatus = ExitStatus;
+    ProcessTerminate(Process);
+    return STATUS_SUCCESS;
+}
