@@ -4,6 +4,7 @@
 #include "ref_cnt.h"
 #include "ex_event.h"
 #include "thread.h"
+#include "syscall_defs.h"
 
 typedef enum _THREAD_STATE
 {
@@ -30,6 +31,7 @@ typedef DWORD           THREAD_FLAGS;
 
 #define THREAD_FLAG_FORCE_TERMINATE_PENDING         0x1
 #define THREAD_FLAG_FORCE_TERMINATED                0x2
+
 
 typedef struct _THREAD
 {
@@ -63,6 +65,10 @@ typedef struct _THREAD
     // List of the threads in the same process
     LIST_ENTRY              ProcessList;
 
+    LIST_ENTRY              HandleThreadList;
+
+    LOCK                    HandleListLock;
+
     // Incremented on each clock tick for the running thread
     QWORD                   TickCountCompleted;
 
@@ -91,6 +97,12 @@ typedef struct _THREAD
 
     struct _PROCESS*        Process;
 } THREAD, *PTHREAD;
+
+typedef struct _HANDLE_THREAD {
+    UM_HANDLE Handle;
+    PTHREAD Thread;
+    LIST_ENTRY HandleThreadList;
+} HANDLE_THREAD, *PHANDLE_THREAD;
 
 //******************************************************************************
 // Function:     ThreadSystemPreinit

@@ -19,6 +19,8 @@
 
 extern void ThreadStart();
 
+//UM_HANDLE handleGen = (UM_HANDLE)3;
+
 typedef
 void
 (__cdecl FUNC_ThreadSwitch)(
@@ -424,6 +426,19 @@ ThreadCreateEx(
     {
         ThreadUnblock(pThread);
     }
+    /*
+    INTR_STATE dummyState;
+ 
+    PHANDLE_THREAD structure = ExAllocatePoolWithTag(PoolAllocateZeroMemory,sizeof(PHANDLE_THREAD),HEAP_HANDLE_TAG,0);
+    structure->Thread = pThread;
+    structure->Handle = handleGen;
+
+    LockAcquire(&pThread->HandleListLock, &dummyState);
+    handleGen++;
+    InsertTailList(&pThread->HandleThreadList, &structure->HandleThreadList);
+    LockRelease(&pThread->HandleListLock, dummyState);
+    */
+
 
     *Thread = pThread;
 
@@ -838,6 +853,9 @@ _ThreadInit(
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
         m_threadSystemData.nrOfThreads++;
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
+
+        LockInit(&pThread->HandleListLock);
+        InitializeListHead(&pThread->HandleThreadList);
     }
     __finally
     {
@@ -849,7 +867,7 @@ _ThreadInit(
                 pThread = NULL;
             }
         }
-        LOG("Thread with id 0x%X and name %s was created", pThread->Id, pThread->Name);
+        //LOG("Thread with id 0x%X and name %s was created", pThread->Id, pThread->Name);
         *Thread = pThread;
 
         LOG_FUNC_END;
@@ -1227,7 +1245,7 @@ _ThreadDestroy(
     ASSERT(NULL != pThread);
     ASSERT(NULL == Context);
 
-    LOG("Thread with id 0x%X and name %s was finished", pThread->Id, pThread->Name);
+    //LOG("Thread with id 0x%X and name %s was finished", pThread->Id, pThread->Name);
 
     LockAcquire(&m_threadSystemData.AllThreadsLock, &oldState);
     RemoveEntryList(&pThread->AllList);

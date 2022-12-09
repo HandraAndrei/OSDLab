@@ -14,6 +14,8 @@ extern void SyscallEntry();
 
 #define SYSCALL_IF_VERSION_KM       SYSCALL_IMPLEMENTED_IF_VERSION
 
+UM_HANDLE handleGen = (UM_HANDLE)3;
+
 void
 SyscallHandler(
     INOUT   COMPLETE_PROCESSOR_STATE    *CompleteProcessorState
@@ -95,11 +97,13 @@ SyscallHandler(
                 (UM_HANDLE)pSyscallParameters[0],
                 (TID*)pSyscallParameters[1]);
             break;
+        /*
         case SyscallIdProcessGetPid:
             status = SyscallProcessGetPid(
                 (UM_HANDLE)pSyscallParameters[0],
                 (PID*)pSyscallParameters[1]);
             break;
+            */
         case SyscallIdThreadWaitForTermination :
             status = SyscallThreadWaitForTermination(
                 (UM_HANDLE)pSyscallParameters[0],
@@ -250,49 +254,115 @@ SyscallThreadCreate(
     IN_OPT  PVOID                   Context,
     OUT     UM_HANDLE* ThreadHandle
 ) {
-    PTHREAD thread = NULL;
+    //PTHREAD currentThread = GetCurrentThread();
+    PTHREAD thread;
+    
     if (StartFunction == NULL) {
         return STATUS_UNSUCCESSFUL;
     }
-    ThreadCreate("name", ThreadPriorityDefault, StartFunction, Context, &thread);
-    ThreadHandle = (UM_HANDLE*)thread;
-    return STATUS_SUCCESS;
+    
+
+    STATUS validationStatus = MmuIsBufferValid((PVOID)StartFunction, sizeof(StartFunction), PAGE_RIGHTS_ALL, GetCurrentProcess());
+
+    if (validationStatus != STATUS_SUCCESS) {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    STATUS createStatus = ThreadCreateEx("name", ThreadPriorityDefault, StartFunction, Context, &thread, GetCurrentProcess());
+
+    if (createStatus == STATUS_SUCCESS) {
+        INTR_STATE dummyState;
+        PHANDLE_THREAD structure = ExAllocatePoolWithTag(PoolAllocateZeroMemory, sizeof(PHANDLE_THREAD), HEAP_HANDLE_TAG, 0);
+        structure->Thread = thread;
+        structure->Handle = handleGen;
+
+        *ThreadHandle = handleGen;
+
+        LockAcquire(&thread->HandleListLock, &dummyState);
+        handleGen++;
+        InsertTailList(&thread->HandleThreadList, &structure->HandleThreadList);
+        LockRelease(&thread->HandleListLock, dummyState);
+    }
+
+    return createStatus;
 }
 STATUS
 SyscallThreadGetTid(
     IN_OPT  UM_HANDLE               ThreadHandle,
     OUT     TID* ThreadId
 ) {
-    *ThreadId = ThreadGetId((PTHREAD)ThreadHandle);
-    return STATUS_SUCCESS;
+
+    PTHREAD currentThread = GetCurrentThread();
+    if (ThreadHandle == UM_INVALID_HANDLE_VALUE) {
+        return STATUS_UNSUCCESSFUL;
+    }
+    PLIST_ENTRY handleEntryList = currentThread->HandleThreadList.Flink;
+    while (handleEntryList != &currentThread->HandleThreadList) {
+        PHANDLE_THREAD handleThread = CONTAINING_RECORD(handleEntryList, HANDLE_THREAD, HandleThreadList);
+        if (handleThread->Handle == ThreadHandle) {
+            *ThreadId = ThreadGetId(handleThread->Thread);
+            return STATUS_SUCCESS;
+        }
+        handleEntryList = handleEntryList->Flink;
+    }
+    return STATUS_UNSUCCESSFUL;
 }
 STATUS
 SyscallThreadWaitForTermination(
     IN      UM_HANDLE               ThreadHandle,
     OUT     STATUS* TerminationStatus
 ) {
-    ThreadWaitForTermination((PTHREAD)ThreadHandle,&TerminationStatus);
-    return STATUS_SUCCESS;
+    PTHREAD currentThread = GetCurrentThread();
+    if (ThreadHandle == UM_INVALID_HANDLE_VALUE) {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    PLIST_ENTRY handleEntryList = currentThread->HandleThreadList.Flink;
+    while (handleEntryList != &currentThread->HandleThreadList) {
+        PHANDLE_THREAD handleThread = CONTAINING_RECORD(handleEntryList, HANDLE_THREAD, HandleThreadList);
+        if (handleThread->Handle == ThreadHandle) {
+            ThreadWaitForTermination(handleThread->Thread, TerminationStatus);
+            return STATUS_SUCCESS;
+        }
+        handleEntryList = handleEntryList->Flink;
+    }
+    return STATUS_UNSUCCESSFUL;
 }
 
 STATUS
 SyscallThreadCloseHandle(
     IN      UM_HANDLE               ThreadHandle
 ) {
-    ThreadCloseHandle((PTHREAD)ThreadHandle);
-    return STATUS_SUCCESS;
+    PTHREAD currentThread = GetCurrentThread();
+    if (ThreadHandle == UM_INVALID_HANDLE_VALUE) {
+        return STATUS_UNSUCCESSFUL;
+    }
+    PLIST_ENTRY handleEntryList = currentThread->HandleThreadList.Flink;
+    while (handleEntryList != &currentThread->HandleThreadList) {
+        PHANDLE_THREAD handleThread = CONTAINING_RECORD(handleEntryList, HANDLE_THREAD, HandleThreadList);
+        if (handleThread->Handle == ThreadHandle) {
+            ThreadCloseHandle(handleThread->Thread);
+            INTR_STATE dummyState;
+            LockAcquire(&currentThread->HandleListLock, &dummyState);
+            RemoveEntryList(&handleThread->HandleThreadList);
+            LockRelease(&currentThread->HandleListLock, dummyState); 
+            return STATUS_SUCCESS;
+        }
+        handleEntryList = handleEntryList->Flink;
+    }
+    return STATUS_UNSUCCESSFUL;
 }
 
-
+/*
 STATUS
 SyscallProcessGetPid(
     IN_OPT  UM_HANDLE               ProcessHandle,
     OUT     PID* ProcessId
 ) {
-    *ProcessId = ProcessGetId((PPROCESS)ProcessHandle);
+    ProcessId = NULL;
     return STATUS_SUCCESS;
 }
-
+*/
 STATUS
 SyscallProcessExit(
     IN      STATUS                  ExitStatus

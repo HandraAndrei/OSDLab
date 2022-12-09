@@ -10,11 +10,13 @@ const PROCESS_TEST PROCESS_TESTS[] =
     // Project 2: Userprog
 
     // arguments
+    /*
     { "TestUserArgsNone", "Args", NULL},
     { "TestUserArgsOne", "Args", "Argument"},
     { "TestUserArgsMany", "Args", "Johnny is a good kid"},
     { "TestUserArgsAll", "Args", "a b c d e f g h i j k l m n o p r s t u v q x y z"},
-
+    */
+    /*
     // bad-actions
     { "BadJumpKernel", "BadJumpKernel", NULL},
     { "BadJumpNoncanonical", "BadJumpNoncanonical", NULL},
@@ -72,22 +74,23 @@ const PROCESS_TEST PROCESS_TESTS[] =
     { "ProcessWaitClosedHandle", "ProcessWaitClosedHandle", NULL},
     { "ProcessWaitNormal", "ProcessWaitNormal", NULL},
     { "ProcessWaitTerminated", "ProcessWaitTerminated", NULL},
-
+    
+    */
     // thread-syscalls
     { "ThreadCloseTwice", "ThreadCloseTwice", NULL},
 
-    { "ThreadCreateBadPointer", "ThreadCreateBadPointer", NULL},
+    //{ "ThreadCreateBadPointer", "ThreadCreateBadPointer", NULL},
     { "ThreadCreateMultiple", "ThreadCreateMultiple", NULL},
     { "ThreadCreateOnce", "ThreadCreateOnce", NULL},
-    { "ThreadCreateWithArguments", "ThreadCreateWithArguments", NULL},
+   // { "ThreadCreateWithArguments", "ThreadCreateWithArguments", NULL},
 
     { "ThreadExit", "ThreadExit", NULL},
     { "ThreadGetTid", "ThreadGetTid", NULL},
 
-    { "ThreadWaitBadHandle", "ThreadWaitBadHandle", NULL},
-    { "ThreadWaitClosedHandle", "ThreadWaitClosedHandle", NULL},
+    //{ "ThreadWaitBadHandle", "ThreadWaitBadHandle", NULL},
+    //{ "ThreadWaitClosedHandle", "ThreadWaitClosedHandle", NULL},
     { "ThreadWaitNormal", "ThreadWaitNormal", NULL},
-    { "ThreadWaitTerminated", "ThreadWaitTerminated", NULL},
+    //{ "ThreadWaitTerminated", "ThreadWaitTerminated", NULL},
 
     // Project 3: Virtual Memory
 
