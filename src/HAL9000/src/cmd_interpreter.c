@@ -13,9 +13,9 @@
 #include "cmd_net_helper.h"
 #include "cmd_basic.h"
 #include "boot_module.h"
-
-#include "process.h"
 #include "iomu.h"
+#include "process_internal.h"
+
 
 #pragma warning(push)
 
@@ -222,6 +222,8 @@ CmdRun(
         status = ProcessCreate(fullPath, NULL, &pProcess);
         ASSERT(SUCCEEDED(status));
     }
+    
+    
     
 
     exit = _CmdExecuteModuleCommands();
