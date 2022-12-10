@@ -9,6 +9,7 @@
 #include "dmp_cpu.h"
 #include "thread.h"
 #include "thread_internal.h"
+#include "vmm.h"
 
 extern void SyscallEntry();
 
@@ -84,6 +85,18 @@ SyscallHandler(
                 (QWORD*)pSyscallParameters[3]
                 );
             break;
+        case SyscallIdVirtualAlloc:
+            status = SyscallVirtualAlloc(
+                (PVOID)pSyscallParameters[0],
+                (QWORD)pSyscallParameters[1],
+                (VMM_ALLOC_TYPE)pSyscallParameters[2],
+                (PAGE_RIGHTS)pSyscallParameters[3],
+                (UM_HANDLE)pSyscallParameters[4],
+                (QWORD)pSyscallParameters[5],
+                (PVOID)pSyscallParameters[6]
+            );
+            break;
+
         default:
             LOG_ERROR("Unimplemented syscall called from User-space!\n");
             status = STATUS_UNSUPPORTED;
@@ -227,5 +240,23 @@ SyscallProcessExit(
     Process = GetCurrentProcess();
     Process->TerminationStatus = ExitStatus;
     ProcessTerminate(Process);
+    return STATUS_SUCCESS;
+}
+
+STATUS
+SyscallVirtualAlloc(
+    IN_OPT      PVOID                   BaseAddress,
+    IN          QWORD                   Size,
+    IN          VMM_ALLOC_TYPE          AllocType,
+    IN          PAGE_RIGHTS             PageRights,
+    IN_OPT      UM_HANDLE               FileHandle,
+    IN_OPT      QWORD                   Key,
+    OUT         PVOID* AllocatedAddress
+)
+{
+    UNREFERENCED_PARAMETER(Key);
+    UNREFERENCED_PARAMETER(FileHandle)
+    PVOID address = VmmAllocRegionEx(BaseAddress,Size,AllocType,PageRights,FALSE,NULL,NULL,NULL,NULL);
+    *AllocatedAddress = address;
     return STATUS_SUCCESS;
 }

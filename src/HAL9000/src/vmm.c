@@ -571,6 +571,8 @@ VmmAllocRegionEx(
             LOG_FUNC_ERROR("VmReservationSpaceAllocRegion", status);
             __leave;
         }
+        LOG("Allocating for VaSpace at 0x%X, a memory region from 0x%X of size 0x%X\n",
+            pVaSpace, pBaseAddress, alignedSize);
         ASSERT(NULL != pBaseAddress);
 
         if (IsBooleanFlagOn(AllocType, VMM_ALLOC_TYPE_NOT_LAZY))
