@@ -1,0 +1,2014 @@
+diff --git a/lab9.txt b/lab9.txt
+new file mode 100644
+index 0000000..8326c94
+--- /dev/null
++++ b/lab9.txt
+@@ -0,0 +1,372 @@
++diff --git a/lab7.txt b/lab7.txt
++deleted file mode 100644
++index c5222f6..0000000
++--- a/lab7.txt
+++++ /dev/null
++@@ -1,137 +0,0 @@
++-diff --git a/src/HAL9000/src/isr.c b/src/HAL9000/src/isr.c
++-index 0cccd74..4ccbbeb 100644
++---- a/src/HAL9000/src/isr.c
++-+++ b/src/HAL9000/src/isr.c
++-@@ -143,6 +143,16 @@ _IsrExceptionHandler(
++-         LOG_TRACE_EXCEPTION("RSP[0]: 0x%X\n", *((QWORD*)StackPointer->Registers.Rsp));
++-     }
++- 
++-+    if (!exceptionHandled)
++-+    {
++-+        if (!GdtIsSegmentPrivileged((WORD)StackPointer->Registers.CS))
++-+        {
++-+            PPROCESS currProcess = GetCurrentProcess();
++-+            LOG_TRACE_EXCEPTION("Terminating process %s\n", ProcessGetName(currProcess));
++-+            ProcessTerminate(currProcess);
++-+        }
++-+    }
++-+
++-     // no use in logging if we solved the problem
++-     if (!exceptionHandled)
++-     {
++-diff --git a/src/HAL9000/src/syscall.c b/src/HAL9000/src/syscall.c
++-index 1576f7f..0464491 100644
++---- a/src/HAL9000/src/syscall.c
++-+++ b/src/HAL9000/src/syscall.c
++-@@ -7,6 +7,8 @@
++- #include "mmu.h"
++- #include "process_internal.h"
++- #include "dmp_cpu.h"
++-+#include "thread.h"
++-+#include "thread_internal.h"
++- 
++- extern void SyscallEntry();
++- 
++-@@ -68,6 +70,20 @@ SyscallHandler(
++-             status = SyscallValidateInterface((SYSCALL_IF_VERSION)*pSyscallParameters);
++-             break;
++-         // STUDENT TODO: implement the rest of the syscalls
++-+        case SyscallIdProcessExit:
++-+            status = SyscallProcessExit((STATUS)*pSyscallParameters);
++-+            break;
++-+        case SyscallIdThreadExit:
++-+            status = SyscallThreadExit((STATUS)*pSyscallParameters);
++-+            break;
++-+        case SyscallIdFileWrite:
++-+            status = SyscallFileWrite(
++-+                (UM_HANDLE)pSyscallParameters[0],
++-+                (PVOID)pSyscallParameters[1],
++-+                (QWORD)pSyscallParameters[2],
++-+                (QWORD*)pSyscallParameters[3]
++-+                );
++-+            break;
++-         default:
++-             LOG_ERROR("Unimplemented syscall called from User-space!\n");
++-             status = STATUS_UNSUPPORTED;
++-@@ -169,4 +185,47 @@ SyscallValidateInterface(
++-     return STATUS_SUCCESS;
++- }
++- 
++--// STUDENT TODO: implement the rest of the syscalls
++-\ No newline at end of file
++-+// STUDENT TODO: implement the rest of the syscalls
++-+STATUS
++-+SyscallFileWrite(
++-+    IN  UM_HANDLE                   FileHandle,
++-+    IN_READS_BYTES(BytesToWrite)
++-+     PVOID                       Buffer,
++-+    IN  QWORD                       BytesToWrite,
++-+    OUT QWORD * BytesWritten
++-+)
++-+{
++-+    if (BytesWritten == NULL) {
++-+        return STATUS_UNSUCCESSFUL;
++-+        
++-+    }
++-+    
++-+    if (FileHandle == UM_FILE_HANDLE_STDOUT) {
++-+        *BytesWritten = BytesToWrite;
++-+        LOG("[%s]:[%s]\n", ProcessGetName(NULL), Buffer);
++-+        return STATUS_SUCCESS;
++-+    }
++-+    *BytesWritten = BytesToWrite;
++-+    return STATUS_SUCCESS;
++-+}
++-+
++-+STATUS
++-+SyscallThreadExit(
++-+    IN  STATUS                      ExitStatus
++-+)
++-+{
++-+    ThreadExit(ExitStatus);
++-+    return STATUS_SUCCESS;
++-+}
++-+
++-+STATUS
++-+SyscallProcessExit(
++-+    IN      STATUS                  ExitStatus
++-+)
++-+{
++-+    PPROCESS Process;
++-+    Process = GetCurrentProcess();
++-+    Process->TerminationStatus = ExitStatus;
++-+    ProcessTerminate(Process);
++-+    return STATUS_SUCCESS;
++-+}
++-\ No newline at end of file
++-diff --git a/src/HAL9000/src/system.c b/src/HAL9000/src/system.c
++-index 780a0bc..9e03560 100644
++---- a/src/HAL9000/src/system.c
++-+++ b/src/HAL9000/src/system.c
++-@@ -77,8 +77,8 @@ SystemInit(
++-                   TRUE
++-                   );
++-                   */
++--    LogSystemInit(LogLevelTrace,
++--        LogComponentUserMode,
++-+    LogSystemInit(LogLevelInfo,
++-+        LogComponentInterrupt | LogComponentIo | LogComponentAcpi | LogComponentUserMode | LogComponentMmu,
++-         TRUE
++-     );
++- 
++-diff --git a/src/HAL9000/src/vmm.c b/src/HAL9000/src/vmm.c
++-index a70a2cb..d5b5860 100644
++---- a/src/HAL9000/src/vmm.c
++-+++ b/src/HAL9000/src/vmm.c
++-@@ -269,7 +269,10 @@ VmmMapMemoryInternal(
++-     ctx.Uncacheable = Uncacheable;
++- 
++-     cr3.Raw = (QWORD) PagingData->BasePhysicalAddress;
++--
++-+    if (!_VmIsKernelAddress(BaseAddress)) {
++-+        LOG("Will map virtual address 0x%X to physical address 0x%X\n",
++-+            BaseAddress, PhysicalAddress);
++-+    }
++-     _VmWalkPagingTables(cr3,
++-                         BaseAddress,
++-                         Size,
++diff --git a/src/HAL9000/headers.rar b/src/HAL9000/headers.rar
++new file mode 100644
++index 0000000..0592108
++Binary files /dev/null and b/src/HAL9000/headers.rar differ
++diff --git a/src/HAL9000/src.rar b/src/HAL9000/src.rar
++new file mode 100644
++index 0000000..8a9939c
++Binary files /dev/null and b/src/HAL9000/src.rar differ
++diff --git a/src/HAL9000/src/cmd_interpreter.c b/src/HAL9000/src/cmd_interpreter.c
++index d0b254f..fa5a0ee 100644
++--- a/src/HAL9000/src/cmd_interpreter.c
+++++ b/src/HAL9000/src/cmd_interpreter.c
++@@ -13,6 +13,9 @@
++ #include "cmd_net_helper.h"
++ #include "cmd_basic.h"
++ #include "boot_module.h"
+++#include "iomu.h"
+++#include "process_internal.h"
+++
++ 
++ #pragma warning(push)
++ 
++@@ -203,6 +206,25 @@ CmdRun(
++     DWORD bytesRead;
++ 
++     bytesRead = 0;
+++    
+++    for (DWORD i = 0; i < 16; ++i)
+++    {
+++        STATUS status;
+++        PPROCESS pProcess;
+++        char fullPath[MAX_PATH];
+++
+++        pProcess = NULL;
+++
+++        status = snprintf(fullPath, MAX_PATH, "%sAPPLIC~1\\VirtualAllocNormal.exe",
+++            IomuGetSystemPartitionPath());
+++        ASSERT(SUCCEEDED(status));
+++
+++        status = ProcessCreate(fullPath, NULL, &pProcess);
+++        ASSERT(SUCCEEDED(status));
+++    }
+++    
+++    
+++    
++ 
++     exit = _CmdExecuteModuleCommands();
++     while (!exit)
++diff --git a/src/HAL9000/src/pmm.c b/src/HAL9000/src/pmm.c
++index 2347074..a064cb4 100644
++--- a/src/HAL9000/src/pmm.c
+++++ b/src/HAL9000/src/pmm.c
++@@ -3,6 +3,8 @@
++ #include "int15.h"
++ #include "bitmap.h"
++ #include "synch.h"
+++#include"thread_internal.h"
+++#include "process.h"
++ 
++ typedef struct _MEMORY_REGION_LIST
++ {
++@@ -180,6 +182,21 @@ PmmReserveMemoryEx(
++ 
++     LockRelease( &m_pmmData.AllocationLock, oldState);
++ 
+++    PTHREAD pThread = GetCurrentThread();
+++    PPROCESS pCurrentProcess = NULL;
+++    BOOLEAN bSystemProcess;
+++
+++    if (pThread != NULL)
+++    {
+++        pCurrentProcess = pThread->Process;
+++    }
+++
+++    bSystemProcess = (pCurrentProcess == NULL) || ProcessIsSystem(pCurrentProcess);
+++
+++    LOG("Reserved physical frames from 0x%X of size 0x%X on behalf of [%s] process\n",
+++        idx * PAGE_SIZE, ((QWORD)NoOfFrames * PAGE_SIZE),
+++        bSystemProcess ? "SYSTEM" : ProcessGetName(pCurrentProcess));
+++
++     return (PHYSICAL_ADDRESS) ( (QWORD) idx * PAGE_SIZE );
++ }
++ 
++diff --git a/src/HAL9000/src/syscall.c b/src/HAL9000/src/syscall.c
++index a625f9d..dd42248 100644
++--- a/src/HAL9000/src/syscall.c
+++++ b/src/HAL9000/src/syscall.c
++@@ -9,6 +9,7 @@
++ #include "dmp_cpu.h"
++ #include "thread.h"
++ #include "thread_internal.h"
+++#include "vmm.h"
++ 
++ extern void SyscallEntry();
++ 
++@@ -84,30 +85,16 @@ SyscallHandler(
++                 (QWORD*)pSyscallParameters[3]
++                 );
++             break;
++-        case SyscallIdThreadCreate:
++-            status = SyscallThreadCreate(
++-                (PFUNC_ThreadStart)pSyscallParameters[0],
++-                (PVOID)pSyscallParameters[1],
++-                (UM_HANDLE*)pSyscallParameters[2]);
++-            break;
++-        case SyscallIdThreadGetTid:
++-            status = SyscallThreadGetTid(
++-                (UM_HANDLE)pSyscallParameters[0],
++-                (TID*)pSyscallParameters[1]);
++-            break;
++-        case SyscallIdProcessGetPid:
++-            status = SyscallProcessGetPid(
++-                (UM_HANDLE)pSyscallParameters[0],
++-                (PID*)pSyscallParameters[1]);
++-            break;
++-        case SyscallIdThreadWaitForTermination :
++-            status = SyscallThreadWaitForTermination(
++-                (UM_HANDLE)pSyscallParameters[0],
++-                (STATUS*)pSyscallParameters[1]);
++-            break;
++-        case SyscallIdThreadCloseHandle :
++-            status = SyscallThreadCloseHandle(
++-                (UM_HANDLE)pSyscallParameters[0]);
+++        case SyscallIdVirtualAlloc:
+++            status = SyscallVirtualAlloc(
+++                (PVOID)pSyscallParameters[0],
+++                (QWORD)pSyscallParameters[1],
+++                (VMM_ALLOC_TYPE)pSyscallParameters[2],
+++                (PAGE_RIGHTS)pSyscallParameters[3],
+++                (UM_HANDLE)pSyscallParameters[4],
+++                (QWORD)pSyscallParameters[5],
+++                (PVOID)pSyscallParameters[6]
+++            );
++             break;
++ 
++         default:
++@@ -244,55 +231,6 @@ SyscallThreadExit(
++     return STATUS_SUCCESS;
++ }
++ 
++-STATUS
++-SyscallThreadCreate(
++-    IN      PFUNC_ThreadStart       StartFunction,
++-    IN_OPT  PVOID                   Context,
++-    OUT     UM_HANDLE* ThreadHandle
++-) {
++-    PTHREAD thread = NULL;
++-    if (StartFunction == NULL) {
++-        return STATUS_UNSUCCESSFUL;
++-    }
++-    ThreadCreate("name", ThreadPriorityDefault, StartFunction, Context, &thread);
++-    ThreadHandle = (UM_HANDLE*)thread;
++-    return STATUS_SUCCESS;
++-}
++-STATUS
++-SyscallThreadGetTid(
++-    IN_OPT  UM_HANDLE               ThreadHandle,
++-    OUT     TID* ThreadId
++-) {
++-    *ThreadId = ThreadGetId((PTHREAD)ThreadHandle);
++-    return STATUS_SUCCESS;
++-}
++-STATUS
++-SyscallThreadWaitForTermination(
++-    IN      UM_HANDLE               ThreadHandle,
++-    OUT     STATUS* TerminationStatus
++-) {
++-    ThreadWaitForTermination((PTHREAD)ThreadHandle,&TerminationStatus);
++-    return STATUS_SUCCESS;
++-}
++-
++-STATUS
++-SyscallThreadCloseHandle(
++-    IN      UM_HANDLE               ThreadHandle
++-) {
++-    ThreadCloseHandle((PTHREAD)ThreadHandle);
++-    return STATUS_SUCCESS;
++-}
++-
++-
++-STATUS
++-SyscallProcessGetPid(
++-    IN_OPT  UM_HANDLE               ProcessHandle,
++-    OUT     PID* ProcessId
++-) {
++-    *ProcessId = ProcessGetId((PPROCESS)ProcessHandle);
++-    return STATUS_SUCCESS;
++-}
++-
++ STATUS
++ SyscallProcessExit(
++     IN      STATUS                  ExitStatus
++@@ -303,4 +241,22 @@ SyscallProcessExit(
++     Process->TerminationStatus = ExitStatus;
++     ProcessTerminate(Process);
++     return STATUS_SUCCESS;
+++}
+++
+++STATUS
+++SyscallVirtualAlloc(
+++    IN_OPT      PVOID                   BaseAddress,
+++    IN          QWORD                   Size,
+++    IN          VMM_ALLOC_TYPE          AllocType,
+++    IN          PAGE_RIGHTS             PageRights,
+++    IN_OPT      UM_HANDLE               FileHandle,
+++    IN_OPT      QWORD                   Key,
+++    OUT         PVOID* AllocatedAddress
+++)
+++{
+++    UNREFERENCED_PARAMETER(Key);
+++    UNREFERENCED_PARAMETER(FileHandle)
+++    PVOID address = VmmAllocRegionEx(BaseAddress,Size,AllocType,PageRights,FALSE,NULL,NULL,NULL,NULL);
+++    *AllocatedAddress = address;
+++    return STATUS_SUCCESS;
++ }
++\ No newline at end of file
++diff --git a/src/HAL9000/src/vmm.c b/src/HAL9000/src/vmm.c
++index d5b5860..f3d9df2 100644
++--- a/src/HAL9000/src/vmm.c
+++++ b/src/HAL9000/src/vmm.c
++@@ -571,6 +571,8 @@ VmmAllocRegionEx(
++             LOG_FUNC_ERROR("VmReservationSpaceAllocRegion", status);
++             __leave;
++         }
+++        LOG("Allocating for VaSpace at 0x%X, a memory region from 0x%X of size 0x%X\n",
+++            pVaSpace, pBaseAddress, alignedSize);
++         ASSERT(NULL != pBaseAddress);
++ 
++         if (IsBooleanFlagOn(AllocType, VMM_ALLOC_TYPE_NOT_LAZY))
+diff --git a/postbuild/paths.cmd b/postbuild/paths.cmd
+index cec924b..de51fb1 100644
+--- a/postbuild/paths.cmd
++++ b/postbuild/paths.cmd
+@@ -12,6 +12,7 @@ set PATH_TO_VM_DISK=__EMPTY__
+ set PATH_TO_VM_TOOLS=__EMPTY__
+ set VOL_MOUNT_LETTER=__EMPTY__
+ 
++if _%COMPUTERNAME%_==_DESKTOP-6K9VMO8_ goto config_DESKTOP-6K9VMO8
+ if _%COMPUTERNAME%_==_AGURZOU-DEV-PC_ goto config_AGURZOU-DEV
+ if _%COMPUTERNAME%_==_ALEX-PC_ goto config_ALEX-PC
+ if _%COMPUTERNAME%_==_AGURZOU-LPT_ goto config_AGURZOU-LPT
+@@ -69,4 +70,15 @@ set BOCHS_PATH="c:\Program Files (x86)\Bochs-2.6.8\"
+ 
+ goto end
+ 
++:config_DESKTOP-6K9VMO8
++
++SET PATH_TO_LOG_FILE="D:\faculta\OSD_HAL\HAL9000folder-20221007\HAL9000\VM\HAL9000_VM\HAL9000.log"
++SET PATH_TO_VIX_TOOLS="D:\VMware"
++SET VOL_MOUNT_LETTER="Q:"
++SET PXE_PATH="D:\faculta\OSD_HAL\HAL9000folder-20221007\HAL9000\PXE"
++SET PATH_TO_VM_DISK="D:\faculta\OSD_HAL\HAL9000folder-20221007\HAL9000\VM\HAL9000_VM\HAL9000.vmdk"
++SET PATH_TO_VM_TOOLS="C:\Program Files (x86)\VMware\VMware Virtual Disk Development Kit"
++SET PATH_TO_VM_FILE="D:\faculta\OSD_HAL\HAL9000folder-20221007\HAL9000\VM\HAL9000_VM\HAL9000.vmx"
++goto end
++
+ :end
+\ No newline at end of file
+diff --git a/src/HAL9000/headers/process_internal.h b/src/HAL9000/headers/process_internal.h
+index 7ebdcc6..dd19c20 100644
+--- a/src/HAL9000/headers/process_internal.h
++++ b/src/HAL9000/headers/process_internal.h
+@@ -58,6 +58,11 @@ typedef struct _PROCESS
+ 
+     // VaSpace used only for UM virtual memory allocations
+     struct _VMM_RESERVATION_SPACE*  VaSpace;
++
++    LOCK                            FrameMapLock;
++
++    _Guarded_by_(FrameMapLock)
++    LIST_ENTRY                      FrameMappingsHead;
+ } PROCESS, *PPROCESS;
+ 
+ //******************************************************************************
+diff --git a/src/HAL9000/src/isr.c b/src/HAL9000/src/isr.c
+index 0cccd74..168d5ec 100644
+--- a/src/HAL9000/src/isr.c
++++ b/src/HAL9000/src/isr.c
+@@ -12,22 +12,22 @@
+ #define UNDEFINED_INTERRUPT_TEXT                "UNKNOWN INTERRUPT"
+ #define STACK_BYTES_TO_DUMP_ON_EXCEPTION        0x100
+ 
+-const char EXCEPTION_NAME[ExceptionVirtualizationException+1][MAX_PATH] = { "#DE - Divide Error", "#DB - Debug Exception", "NMI Interrupt",
+-                                                                            "#BP - Breakpoint Exception", "#OF - Overflow Exception", "#BR - BOUND Range Exceeded Exception",
+-                                                                            "#UD - Invalid Opcode Exception", "#NM - Device Not Available Exception", "#DF - Double Fault Exception",
+-                                                                            "Coprocessor Segment Overrun", "#TS - Invalid TSS Exception", "#NP - Segment Not Present",
+-                                                                            "#SS - Stack Fault Exception", "#GP - General Protection Exception", "#PF - Page-Fault Exception",
+-                                                                            UNDEFINED_INTERRUPT_TEXT, "#MF - x87 FPU Floating-Point Error", "#AC - Alignment Check",
+-                                                                            "#MC - Machine-Check Exception", "#XM - SIMD Floating-Point Exception", "#VE - Virtualization Exception"
+-                                                                        };
+-
+-const char INTERRUPT_NAME[NO_OF_IRQS][MAX_PATH] = {     "Timer", "Keyboard", "Cascade",
+-                                                        "COM2", "COM1", UNDEFINED_INTERRUPT_TEXT,
+-                                                        "Diskette", "LPT1", "CMOS RTC",
+-                                                        "CGA", UNDEFINED_INTERRUPT_TEXT,UNDEFINED_INTERRUPT_TEXT
+-                                                        UNDEFINED_INTERRUPT_TEXT, "FPU","Hard Disk",UNDEFINED_INTERRUPT_TEXT,
+-                                                        UNDEFINED_INTERRUPT_TEXT
+-                                                        };
++const char EXCEPTION_NAME[ExceptionVirtualizationException + 1][MAX_PATH] = { "#DE - Divide Error", "#DB - Debug Exception", "NMI Interrupt",
++																			"#BP - Breakpoint Exception", "#OF - Overflow Exception", "#BR - BOUND Range Exceeded Exception",
++																			"#UD - Invalid Opcode Exception", "#NM - Device Not Available Exception", "#DF - Double Fault Exception",
++																			"Coprocessor Segment Overrun", "#TS - Invalid TSS Exception", "#NP - Segment Not Present",
++																			"#SS - Stack Fault Exception", "#GP - General Protection Exception", "#PF - Page-Fault Exception",
++																			UNDEFINED_INTERRUPT_TEXT, "#MF - x87 FPU Floating-Point Error", "#AC - Alignment Check",
++																			"#MC - Machine-Check Exception", "#XM - SIMD Floating-Point Exception", "#VE - Virtualization Exception"
++};
++
++const char INTERRUPT_NAME[NO_OF_IRQS][MAX_PATH] = { "Timer", "Keyboard", "Cascade",
++														"COM2", "COM1", UNDEFINED_INTERRUPT_TEXT,
++														"Diskette", "LPT1", "CMOS RTC",
++														"CGA", UNDEFINED_INTERRUPT_TEXT,UNDEFINED_INTERRUPT_TEXT
++														UNDEFINED_INTERRUPT_TEXT, "FPU","Hard Disk",UNDEFINED_INTERRUPT_TEXT,
++														UNDEFINED_INTERRUPT_TEXT
++};
+ 
+ static PFUNC_IsrRoutine m_isrRoutines[NO_OF_USABLE_INTERRUPTS] = { NULL };
+ static PVOID m_isrContexts[NO_OF_USABLE_INTERRUPTS] = { NULL };
+@@ -35,226 +35,234 @@ static PVOID m_isrContexts[NO_OF_USABLE_INTERRUPTS] = { NULL };
+ static
+ void
+ _IsrExceptionHandler(
+-    IN BYTE                         InterruptIndex,
+-    IN PINTERRUPT_STACK_COMPLETE    StackPointer,
+-    IN BOOLEAN                      ErrorCodeAvailable,
+-    IN COMPLETE_PROCESSOR_STATE*    ProcessorState
+-    );
++	IN BYTE                         InterruptIndex,
++	IN PINTERRUPT_STACK_COMPLETE    StackPointer,
++	IN BOOLEAN                      ErrorCodeAvailable,
++	IN COMPLETE_PROCESSOR_STATE* ProcessorState
++);
+ 
+ static
+ void
+ _IsrInterruptHandler(
+-    IN BYTE             InterruptIndex
+-    );
++	IN BYTE             InterruptIndex
++);
+ 
+ 
+ void
+ IsrCommonHandler(
+-    IN BYTE                                 InterruptIndex,
+-    IN PINTERRUPT_STACK_COMPLETE            StackPointer,
+-    IN BOOLEAN                              ErrorCodeAvailable,
+-    IN COMPLETE_PROCESSOR_STATE*            ProcessorState
+-    )
++	IN BYTE                                 InterruptIndex,
++	IN PINTERRUPT_STACK_COMPLETE            StackPointer,
++	IN BOOLEAN                              ErrorCodeAvailable,
++	IN COMPLETE_PROCESSOR_STATE* ProcessorState
++)
+ {
+-    PPCPU pPcpu;
+-
+-    CHECK_STACK_ALIGNMENT;
+-
+-    ASSERT(CpuIntrGetState() == INTR_OFF);
+-
+-    pPcpu = GetCurrentPcpu();
+-    if (NULL != pPcpu)
+-    {
+-        // in the early stages the PCPU may have not been yet set
+-        pPcpu->InterruptsTriggered[InterruptIndex] += 1;
+-    }
+-
+-    if (InterruptIndex < NO_OF_RESERVED_EXCEPTIONS)
+-    {
+-        _IsrExceptionHandler(InterruptIndex, StackPointer, ErrorCodeAvailable, ProcessorState);
+-    }
+-    else
+-    {
+-        _IsrInterruptHandler(InterruptIndex);
+-    }
++	PPCPU pPcpu;
++
++	CHECK_STACK_ALIGNMENT;
++
++	ASSERT(CpuIntrGetState() == INTR_OFF);
++
++	pPcpu = GetCurrentPcpu();
++	if (NULL != pPcpu)
++	{
++		// in the early stages the PCPU may have not been yet set
++		pPcpu->InterruptsTriggered[InterruptIndex] += 1;
++	}
++
++	if (InterruptIndex < NO_OF_RESERVED_EXCEPTIONS)
++	{
++		_IsrExceptionHandler(InterruptIndex, StackPointer, ErrorCodeAvailable, ProcessorState);
++	}
++	else
++	{
++		_IsrInterruptHandler(InterruptIndex);
++	}
+ }
+ 
+ static
+ void
+ _IsrExceptionHandler(
+-    IN BYTE                         InterruptIndex,
+-    IN PINTERRUPT_STACK_COMPLETE    StackPointer,
+-    IN BOOLEAN                      ErrorCodeAvailable,
+-    IN COMPLETE_PROCESSOR_STATE*             ProcessorState
+-    )
++	IN BYTE                         InterruptIndex,
++	IN PINTERRUPT_STACK_COMPLETE    StackPointer,
++	IN BOOLEAN                      ErrorCodeAvailable,
++	IN COMPLETE_PROCESSOR_STATE* ProcessorState
++)
+ {
+-    DWORD errorCode;
+-    BOOLEAN exceptionHandled;
+-
+-    errorCode = 0;
+-    exceptionHandled = FALSE;
+-
+-    LOG_TRACE_EXCEPTION("Exception: 0x%x [%s]\n", InterruptIndex, EXCEPTION_NAME[InterruptIndex]);
+-
+-    // now even if we don't have an error code
+-    // our ISRs push a zero on the stack
+-    ASSERT(NULL != StackPointer);
+-
+-    if (ErrorCodeAvailable)
+-    {
+-        errorCode = (DWORD)StackPointer->ErrorCode;
+-    }
+-
+-    if (ExceptionPageFault == InterruptIndex)
+-    {
+-        PVOID pfAddr;
+-
+-        ASSERT(ErrorCodeAvailable);
+-
+-        pfAddr = __readcr2();
+-        LOG_TRACE_EXCEPTION("#PF address: 0x%X\n", pfAddr);
+-        exceptionHandled = MmuSolvePageFault(pfAddr, errorCode );
+-        if (!exceptionHandled)
+-        {
+-            PPCPU pCpu;
+-
+-            pCpu = GetCurrentPcpu();
+-            if (NULL != pCpu)
+-            {
+-                BYTE* pStackBottom;
+-
+-                pStackBottom = (BYTE*)pCpu->StackTop - pCpu->StackSize;
+-
+-                if (CHECK_BOUNDS(pfAddr, 1, pStackBottom - STACK_GUARD_SIZE, STACK_GUARD_SIZE))
+-                {
+-                    // memory accessed is directly below the stack (in the unmapped stack guard area)
+-                    LOG_ERROR("Stack overflow\n"
+-                              "Stack in range [0x%X, 0x%X]\n"
+-                              "#PF is at 0x%X\n",
+-                              pStackBottom, pCpu->StackTop,
+-                              pfAddr
+-                              );
+-                }
+-            }
+-        }
+-    }
+-    else if (ExceptionGeneralProtection == InterruptIndex)
+-    {
+-        LOG_TRACE_EXCEPTION("RSP[0]: 0x%X\n", *((QWORD*)StackPointer->Registers.Rsp));
+-    }
+-
+-    // no use in logging if we solved the problem
+-    if (!exceptionHandled)
+-    {
+-        PVOID* pCurrentStackItem;
+-        DWORD noOfStackElementsToDump;
+-        PPCPU pCpu;
+-
+-        LOG_ERROR("Could not handle exception 0x%x [%s]\n", InterruptIndex, EXCEPTION_NAME[InterruptIndex]);
+-
+-        DumpInterruptStack(StackPointer, ErrorCodeAvailable );
+-        DumpControlRegisters();
+-        DumpProcessorState(ProcessorState);
+-
+-        LOG("Faulting stack data:\n");
+-
+-        pCpu = GetCurrentPcpu();
+-
+-        pCurrentStackItem = (PVOID*) max(StackPointer->Registers.Rsp,
+-                                         pCpu != NULL ? (QWORD) PtrDiff(pCpu->StackTop, (QWORD) pCpu->StackSize)
+-                                                      : StackPointer->Registers.Rsp);
+-        noOfStackElementsToDump = (DWORD) (min(STACK_BYTES_TO_DUMP_ON_EXCEPTION,
+-                                               pCpu != NULL ? PtrDiff(pCpu->StackTop,pCurrentStackItem) : STACK_BYTES_TO_DUMP_ON_EXCEPTION)
+-                                           / sizeof(PVOID));
+-        for (DWORD i = 0; i < noOfStackElementsToDump; ++i)
+-        {
+-            LOG("[0x%X]: 0x%X\n", &pCurrentStackItem[i], pCurrentStackItem[i]);
+-        }
+-    }
+-
+-    ASSERT_INFO(exceptionHandled, "Exception 0x%x was not handled\n", InterruptIndex);
++	DWORD errorCode;
++	BOOLEAN exceptionHandled;
++
++	errorCode = 0;
++	exceptionHandled = FALSE;
++
++	LOG_TRACE_EXCEPTION("Exception: 0x%x [%s]\n", InterruptIndex, EXCEPTION_NAME[InterruptIndex]);
++
++	// now even if we don't have an error code
++	// our ISRs push a zero on the stack
++	ASSERT(NULL != StackPointer);
++
++	if (ErrorCodeAvailable)
++	{
++		errorCode = (DWORD)StackPointer->ErrorCode;
++	}
++
++	if (ExceptionPageFault == InterruptIndex)
++	{
++		PVOID pfAddr;
++
++		ASSERT(ErrorCodeAvailable);
++
++		pfAddr = __readcr2();
++		LOG_TRACE_EXCEPTION("#PF address: 0x%X\n", pfAddr);
++		exceptionHandled = MmuSolvePageFault(pfAddr, errorCode);
++		if (!exceptionHandled)
++		{
++			PPCPU pCpu;
++
++			pCpu = GetCurrentPcpu();
++			if (NULL != pCpu)
++			{
++				BYTE* pStackBottom;
++
++				pStackBottom = (BYTE*)pCpu->StackTop - pCpu->StackSize;
++
++				if (CHECK_BOUNDS(pfAddr, 1, pStackBottom - STACK_GUARD_SIZE, STACK_GUARD_SIZE))
++				{
++					// memory accessed is directly below the stack (in the unmapped stack guard area)
++					LOG_ERROR("Stack overflow\n"
++						"Stack in range [0x%X, 0x%X]\n"
++						"#PF is at 0x%X\n",
++						pStackBottom, pCpu->StackTop,
++						pfAddr
++					);
++				}
++			}
++		}
++	}
++	else if (ExceptionGeneralProtection == InterruptIndex)
++	{
++		LOG_TRACE_EXCEPTION("RSP[0]: 0x%X\n", *((QWORD*)StackPointer->Registers.Rsp));
++	}
++	if (!exceptionHandled)
++	{
++		if (!GdtIsSegmentPrivileged((WORD)StackPointer->Registers.CS))
++		{
++			PPROCESS currProcess = GetCurrentProcess();
++			LOG_TRACE_EXCEPTION("Terminating process %s\n", ProcessGetName(currProcess));
++			ProcessTerminate(currProcess);
++		}
++	}
++	// no use in logging if we solved the problem
++	if (!exceptionHandled)
++	{
++		PVOID* pCurrentStackItem;
++		DWORD noOfStackElementsToDump;
++		PPCPU pCpu;
++
++		LOG_ERROR("Could not handle exception 0x%x [%s]\n", InterruptIndex, EXCEPTION_NAME[InterruptIndex]);
++
++		DumpInterruptStack(StackPointer, ErrorCodeAvailable);
++		DumpControlRegisters();
++		DumpProcessorState(ProcessorState);
++
++		LOG("Faulting stack data:\n");
++
++		pCpu = GetCurrentPcpu();
++
++		pCurrentStackItem = (PVOID*)max(StackPointer->Registers.Rsp,
++			pCpu != NULL ? (QWORD)PtrDiff(pCpu->StackTop, (QWORD)pCpu->StackSize)
++			: StackPointer->Registers.Rsp);
++		noOfStackElementsToDump = (DWORD)(min(STACK_BYTES_TO_DUMP_ON_EXCEPTION,
++			pCpu != NULL ? PtrDiff(pCpu->StackTop, pCurrentStackItem) : STACK_BYTES_TO_DUMP_ON_EXCEPTION)
++			/ sizeof(PVOID));
++		for (DWORD i = 0; i < noOfStackElementsToDump; ++i)
++		{
++			LOG("[0x%X]: 0x%X\n", &pCurrentStackItem[i], pCurrentStackItem[i]);
++		}
++	}
++
++	ASSERT_INFO(exceptionHandled, "Exception 0x%x was not handled\n", InterruptIndex);
+ }
+ 
+ static
+ void
+ _IsrInterruptHandler(
+-    IN BYTE             InterruptIndex
+-    )
++	IN BYTE             InterruptIndex
++)
+ {
+-    BOOLEAN interruptHandled;
+-    BOOLEAN bSpuriousInterrupt;
+-    BYTE indexInHandlers;
+-    IRQL prevIrql;
+-
+-    interruptHandled = FALSE;
+-    indexInHandlers = InterruptIndex - NO_OF_RESERVED_EXCEPTIONS;
+-    bSpuriousInterrupt = FALSE;
+-
+-    // In operating systems that use the lowest priority delivery mode but do not update the TPR, the TPR information
+-    // saved in the chipset will potentially cause the interrupt to be always delivered to the same processor from the
+-    // logical set. This behavior is functionally backward compatible with the P6 family processor but may result in
+-    // unexpected performance implications.
+-    prevIrql = CpuMuRaiseIrql(VECTOR_TO_IRQL(InterruptIndex));
+-
+-    // call registered interrupt
+-    if (NULL != m_isrRoutines[indexInHandlers])
+-    {
+-        interruptHandled = m_isrRoutines[indexInHandlers](m_isrContexts[indexInHandlers]);
+-    }
+-    else
+-    {
+-        LOG_ERROR("No interrupt registered for interrupt 0x%x\n", InterruptIndex);
+-    }
+-
+-    if (!interruptHandled)
+-    {
+-        bSpuriousInterrupt = IomuIsInterruptSpurious(InterruptIndex);
+-        if (bSpuriousInterrupt)
+-        {
+-            LOGP_WARNING("Received spurious vector 0x%02x\n", InterruptIndex);
+-        }
+-    }
+-
+-    ASSERT_INFO(interruptHandled || bSpuriousInterrupt, "Interrupt 0x%x was not handled\n", InterruptIndex);
+-
+-    if (!bSpuriousInterrupt)
+-    {
+-        // send EOI
+-        IomuAckInterrupt(InterruptIndex);
+-    }
+-
+-    // must be called before ThreadYield, else we may lower the IRQL too late or never
+-    // if the thread terminates
+-    CpuMuLowerIrql(prevIrql);
+-
+-    if (ThreadYieldOnInterrupt())
+-    {
+-        ThreadYield();
+-    }
++	BOOLEAN interruptHandled;
++	BOOLEAN bSpuriousInterrupt;
++	BYTE indexInHandlers;
++	IRQL prevIrql;
++
++	interruptHandled = FALSE;
++	indexInHandlers = InterruptIndex - NO_OF_RESERVED_EXCEPTIONS;
++	bSpuriousInterrupt = FALSE;
++
++	// In operating systems that use the lowest priority delivery mode but do not update the TPR, the TPR information
++	// saved in the chipset will potentially cause the interrupt to be always delivered to the same processor from the
++	// logical set. This behavior is functionally backward compatible with the P6 family processor but may result in
++	// unexpected performance implications.
++	prevIrql = CpuMuRaiseIrql(VECTOR_TO_IRQL(InterruptIndex));
++
++	// call registered interrupt
++	if (NULL != m_isrRoutines[indexInHandlers])
++	{
++		interruptHandled = m_isrRoutines[indexInHandlers](m_isrContexts[indexInHandlers]);
++	}
++	else
++	{
++		LOG_ERROR("No interrupt registered for interrupt 0x%x\n", InterruptIndex);
++	}
++
++	if (!interruptHandled)
++	{
++		bSpuriousInterrupt = IomuIsInterruptSpurious(InterruptIndex);
++		if (bSpuriousInterrupt)
++		{
++			LOGP_WARNING("Received spurious vector 0x%02x\n", InterruptIndex);
++		}
++	}
++
++	ASSERT_INFO(interruptHandled || bSpuriousInterrupt, "Interrupt 0x%x was not handled\n", InterruptIndex);
++
++	if (!bSpuriousInterrupt)
++	{
++		// send EOI
++		IomuAckInterrupt(InterruptIndex);
++	}
++
++	// must be called before ThreadYield, else we may lower the IRQL too late or never
++	// if the thread terminates
++	CpuMuLowerIrql(prevIrql);
++
++	if (ThreadYieldOnInterrupt())
++	{
++		ThreadYield();
++	}
+ }
+ 
+ STATUS
+ IsrInstallEx(
+-    IN      BYTE                Vector,
+-    IN      PFUNC_IsrRoutine    IsrRoutine,
+-    IN_OPT  PVOID               Context
+-    )
++	IN      BYTE                Vector,
++	IN      PFUNC_IsrRoutine    IsrRoutine,
++	IN_OPT  PVOID               Context
++)
+ {
+-    BYTE indexInRoutines;
++	BYTE indexInRoutines;
+ 
+-    ASSERT( Vector > NO_OF_RESERVED_EXCEPTIONS);
++	ASSERT(Vector > NO_OF_RESERVED_EXCEPTIONS);
+ 
+-    indexInRoutines = Vector - NO_OF_RESERVED_EXCEPTIONS;
++	indexInRoutines = Vector - NO_OF_RESERVED_EXCEPTIONS;
+ 
+-    if (NULL != m_isrRoutines[indexInRoutines])
+-    {
+-        LOG_WARNING("There is already a routine installed at vector 0x%x\n", indexInRoutines);
+-        return STATUS_ALREADY_INITIALIZED;
+-    }
++	if (NULL != m_isrRoutines[indexInRoutines])
++	{
++		LOG_WARNING("There is already a routine installed at vector 0x%x\n", indexInRoutines);
++		return STATUS_ALREADY_INITIALIZED;
++	}
+ 
+-    LOG_TRACE_INTERRUPT("Registering ISR for vector: 0x%x\n", Vector);
+-    m_isrRoutines[indexInRoutines] = IsrRoutine;
+-    m_isrContexts[indexInRoutines] = Context;
++	LOG_TRACE_INTERRUPT("Registering ISR for vector: 0x%x\n", Vector);
++	m_isrRoutines[indexInRoutines] = IsrRoutine;
++	m_isrContexts[indexInRoutines] = Context;
+ 
+-    return STATUS_SUCCESS;
++	return STATUS_SUCCESS;
+ }
+diff --git a/src/HAL9000/src/process.c b/src/HAL9000/src/process.c
+index e8143ad..5bd5695 100644
+--- a/src/HAL9000/src/process.c
++++ b/src/HAL9000/src/process.c
+@@ -507,6 +507,9 @@ _ProcessInit(
+         InitializeListHead(&pProcess->ThreadList);
+         LockInit(&pProcess->ThreadListLock);
+ 
++        InitializeListHead(&pProcess->FrameMappingsHead);
++        LockInit(&pProcess->FrameMapLock);
++
+         // Do this as late as possible - we want to interfere as little as possible
+         // with the system management in case something goes wrong (PID + full process
+         // list management)
+diff --git a/src/HAL9000/src/syscall.c b/src/HAL9000/src/syscall.c
+index 1576f7f..a4bceaf 100644
+--- a/src/HAL9000/src/syscall.c
++++ b/src/HAL9000/src/syscall.c
+@@ -7,6 +7,9 @@
+ #include "mmu.h"
+ #include "process_internal.h"
+ #include "dmp_cpu.h"
++#include "thread_internal.h"
++#include "thread.h"
++#include "vmm.h"
+ 
+ extern void SyscallEntry();
+ 
+@@ -14,159 +17,249 @@ extern void SyscallEntry();
+ 
+ void
+ SyscallHandler(
+-    INOUT   COMPLETE_PROCESSOR_STATE    *CompleteProcessorState
+-    )
++	INOUT   COMPLETE_PROCESSOR_STATE* CompleteProcessorState
++)
+ {
+-    SYSCALL_ID sysCallId;
+-    PQWORD pSyscallParameters;
+-    PQWORD pParameters;
+-    STATUS status;
+-    REGISTER_AREA* usermodeProcessorState;
+-
+-    ASSERT(CompleteProcessorState != NULL);
+-
+-    // It is NOT ok to setup the FMASK so that interrupts will be enabled when the system call occurs
+-    // The issue is that we'll have a user-mode stack and we wouldn't want to receive an interrupt on
+-    // that stack. This is why we only enable interrupts here.
+-    ASSERT(CpuIntrGetState() == INTR_OFF);
+-    CpuIntrSetState(INTR_ON);
+-
+-    LOG_TRACE_USERMODE("The syscall handler has been called!\n");
+-
+-    status = STATUS_SUCCESS;
+-    pSyscallParameters = NULL;
+-    pParameters = NULL;
+-    usermodeProcessorState = &CompleteProcessorState->RegisterArea;
+-
+-    __try
+-    {
+-        if (LogIsComponentTraced(LogComponentUserMode))
+-        {
+-            DumpProcessorState(CompleteProcessorState);
+-        }
+-
+-        // Check if indeed the shadow stack is valid (the shadow stack is mandatory)
+-        pParameters = (PQWORD)usermodeProcessorState->RegisterValues[RegisterRbp];
+-        status = MmuIsBufferValid(pParameters, SHADOW_STACK_SIZE, PAGE_RIGHTS_READ, GetCurrentProcess());
+-        if (!SUCCEEDED(status))
+-        {
+-            LOG_FUNC_ERROR("MmuIsBufferValid", status);
+-            __leave;
+-        }
+-
+-        sysCallId = usermodeProcessorState->RegisterValues[RegisterR8];
+-
+-        LOG_TRACE_USERMODE("System call ID is %u\n", sysCallId);
+-
+-        // The first parameter is the system call ID, we don't care about it => +1
+-        pSyscallParameters = (PQWORD)usermodeProcessorState->RegisterValues[RegisterRbp] + 1;
+-
+-        // Dispatch syscalls
+-        switch (sysCallId)
+-        {
+-        case SyscallIdIdentifyVersion:
+-            status = SyscallValidateInterface((SYSCALL_IF_VERSION)*pSyscallParameters);
+-            break;
+-        // STUDENT TODO: implement the rest of the syscalls
+-        default:
+-            LOG_ERROR("Unimplemented syscall called from User-space!\n");
+-            status = STATUS_UNSUPPORTED;
+-            break;
+-        }
+-
+-    }
+-    __finally
+-    {
+-        LOG_TRACE_USERMODE("Will set UM RAX to 0x%x\n", status);
+-
+-        usermodeProcessorState->RegisterValues[RegisterRax] = status;
+-
+-        CpuIntrSetState(INTR_OFF);
+-    }
++	SYSCALL_ID sysCallId;
++	PQWORD pSyscallParameters;
++	PQWORD pParameters;
++	STATUS status;
++	REGISTER_AREA* usermodeProcessorState;
++
++	ASSERT(CompleteProcessorState != NULL);
++
++	// It is NOT ok to setup the FMASK so that interrupts will be enabled when the system call occurs
++	// The issue is that we'll have a user-mode stack and we wouldn't want to receive an interrupt on
++	// that stack. This is why we only enable interrupts here.
++	ASSERT(CpuIntrGetState() == INTR_OFF);
++	CpuIntrSetState(INTR_ON);
++
++	LOG_TRACE_USERMODE("The syscall handler has been called!\n");
++
++	status = STATUS_SUCCESS;
++	pSyscallParameters = NULL;
++	pParameters = NULL;
++	usermodeProcessorState = &CompleteProcessorState->RegisterArea;
++
++	__try
++	{
++		if (LogIsComponentTraced(LogComponentUserMode))
++		{
++			DumpProcessorState(CompleteProcessorState);
++		}
++
++		// Check if indeed the shadow stack is valid (the shadow stack is mandatory)
++		pParameters = (PQWORD)usermodeProcessorState->RegisterValues[RegisterRbp];
++		status = MmuIsBufferValid(pParameters, SHADOW_STACK_SIZE, PAGE_RIGHTS_READ, GetCurrentProcess());
++		if (!SUCCEEDED(status))
++		{
++			LOG_FUNC_ERROR("MmuIsBufferValid", status);
++			__leave;
++		}
++
++		sysCallId = usermodeProcessorState->RegisterValues[RegisterR8];
++
++		LOG_TRACE_USERMODE("System call ID is %u\n", sysCallId);
++
++		// The first parameter is the system call ID, we don't care about it => +1
++		pSyscallParameters = (PQWORD)usermodeProcessorState->RegisterValues[RegisterRbp] + 1;
++
++		// Dispatch syscalls
++		switch (sysCallId)
++		{
++		case SyscallIdIdentifyVersion:
++			status = SyscallValidateInterface((SYSCALL_IF_VERSION)*pSyscallParameters);
++			break;
++			// STUDENT TODO: implement the rest of the syscalls
++		case SyscallIdProcessExit:
++			status = SyscallProcessExit((STATUS)*pSyscallParameters);
++			break;
++		case SyscallIdThreadExit:
++			status = SyscallThreadExit((STATUS)*pSyscallParameters);
++			break;
++		case SyscallIdFileWrite:
++			status = SyscallFileWrite(
++				(UM_HANDLE)pSyscallParameters[0],
++				(PVOID)pSyscallParameters[1],
++				(QWORD)pSyscallParameters[2],
++				(QWORD*)pSyscallParameters[3]
++			);
++			break;
++		case SyscallIdVirtualAlloc:
++			status = SyscallVirtualAlloc(
++				(PVOID)pSyscallParameters[0],
++				(QWORD)pSyscallParameters[1],
++				(VMM_ALLOC_TYPE)pSyscallParameters[2],
++				(PAGE_RIGHTS)pSyscallParameters[3],
++				(UM_HANDLE)pSyscallParameters[4],
++				(QWORD)pSyscallParameters[5],
++				(PVOID)pSyscallParameters[6]
++			);
++			break;
++		default:
++			LOG_ERROR("Unimplemented syscall called from User-space!\n");
++			status = STATUS_UNSUPPORTED;
++			break;
++		}
++
++	}
++	__finally
++	{
++		LOG_TRACE_USERMODE("Will set UM RAX to 0x%x\n", status);
++
++		usermodeProcessorState->RegisterValues[RegisterRax] = status;
++
++		CpuIntrSetState(INTR_OFF);
++	}
+ }
+ 
+ void
+ SyscallPreinitSystem(
+-    void
+-    )
++	void
++)
+ {
+ 
+ }
+ 
+ STATUS
+ SyscallInitSystem(
+-    void
+-    )
++	void
++)
+ {
+-    return STATUS_SUCCESS;
++	return STATUS_SUCCESS;
+ }
+ 
+ STATUS
+ SyscallUninitSystem(
+-    void
+-    )
++	void
++)
+ {
+-    return STATUS_SUCCESS;
++	return STATUS_SUCCESS;
+ }
+ 
+ void
+ SyscallCpuInit(
+-    void
+-    )
++	void
++)
+ {
+-    IA32_STAR_MSR_DATA starMsr;
+-    WORD kmCsSelector;
+-    WORD umCsSelector;
++	IA32_STAR_MSR_DATA starMsr;
++	WORD kmCsSelector;
++	WORD umCsSelector;
+ 
+-    memzero(&starMsr, sizeof(IA32_STAR_MSR_DATA));
++	memzero(&starMsr, sizeof(IA32_STAR_MSR_DATA));
+ 
+-    kmCsSelector = GdtMuGetCS64Supervisor();
+-    ASSERT(kmCsSelector + 0x8 == GdtMuGetDS64Supervisor());
++	kmCsSelector = GdtMuGetCS64Supervisor();
++	ASSERT(kmCsSelector + 0x8 == GdtMuGetDS64Supervisor());
+ 
+-    umCsSelector = GdtMuGetCS32Usermode();
+-    /// DS64 is the same as DS32
+-    ASSERT(umCsSelector + 0x8 == GdtMuGetDS32Usermode());
+-    ASSERT(umCsSelector + 0x10 == GdtMuGetCS64Usermode());
++	umCsSelector = GdtMuGetCS32Usermode();
++	/// DS64 is the same as DS32
++	ASSERT(umCsSelector + 0x8 == GdtMuGetDS32Usermode());
++	ASSERT(umCsSelector + 0x10 == GdtMuGetCS64Usermode());
+ 
+-    // Syscall RIP <- IA32_LSTAR
+-    __writemsr(IA32_LSTAR, (QWORD) SyscallEntry);
++	// Syscall RIP <- IA32_LSTAR
++	__writemsr(IA32_LSTAR, (QWORD)SyscallEntry);
+ 
+-    LOG_TRACE_USERMODE("Successfully set LSTAR to 0x%X\n", (QWORD) SyscallEntry);
++	LOG_TRACE_USERMODE("Successfully set LSTAR to 0x%X\n", (QWORD)SyscallEntry);
+ 
+-    // Syscall RFLAGS <- RFLAGS & ~(IA32_FMASK)
+-    __writemsr(IA32_FMASK, RFLAGS_INTERRUPT_FLAG_BIT);
++	// Syscall RFLAGS <- RFLAGS & ~(IA32_FMASK)
++	__writemsr(IA32_FMASK, RFLAGS_INTERRUPT_FLAG_BIT);
+ 
+-    LOG_TRACE_USERMODE("Successfully set FMASK to 0x%X\n", RFLAGS_INTERRUPT_FLAG_BIT);
++	LOG_TRACE_USERMODE("Successfully set FMASK to 0x%X\n", RFLAGS_INTERRUPT_FLAG_BIT);
+ 
+-    // Syscall CS.Sel <- IA32_STAR[47:32] & 0xFFFC
+-    // Syscall DS.Sel <- (IA32_STAR[47:32] + 0x8) & 0xFFFC
+-    starMsr.SyscallCsDs = kmCsSelector;
++	// Syscall CS.Sel <- IA32_STAR[47:32] & 0xFFFC
++	// Syscall DS.Sel <- (IA32_STAR[47:32] + 0x8) & 0xFFFC
++	starMsr.SyscallCsDs = kmCsSelector;
+ 
+-    // Sysret CS.Sel <- (IA32_STAR[63:48] + 0x10) & 0xFFFC
+-    // Sysret DS.Sel <- (IA32_STAR[63:48] + 0x8) & 0xFFFC
+-    starMsr.SysretCsDs = umCsSelector;
++	// Sysret CS.Sel <- (IA32_STAR[63:48] + 0x10) & 0xFFFC
++	// Sysret DS.Sel <- (IA32_STAR[63:48] + 0x8) & 0xFFFC
++	starMsr.SysretCsDs = umCsSelector;
+ 
+-    __writemsr(IA32_STAR, starMsr.Raw);
++	__writemsr(IA32_STAR, starMsr.Raw);
+ 
+-    LOG_TRACE_USERMODE("Successfully set STAR to 0x%X\n", starMsr.Raw);
++	LOG_TRACE_USERMODE("Successfully set STAR to 0x%X\n", starMsr.Raw);
+ }
+ 
+ // SyscallIdIdentifyVersion
+ STATUS
+ SyscallValidateInterface(
+-    IN  SYSCALL_IF_VERSION          InterfaceVersion
++	IN  SYSCALL_IF_VERSION          InterfaceVersion
+ )
+ {
+-    LOG_TRACE_USERMODE("Will check interface version 0x%x from UM against 0x%x from KM\n",
+-        InterfaceVersion, SYSCALL_IF_VERSION_KM);
++	LOG_TRACE_USERMODE("Will check interface version 0x%x from UM against 0x%x from KM\n",
++		InterfaceVersion, SYSCALL_IF_VERSION_KM);
+ 
+-    if (InterfaceVersion != SYSCALL_IF_VERSION_KM)
+-    {
+-        LOG_ERROR("Usermode interface 0x%x incompatible with KM!\n", InterfaceVersion);
+-        return STATUS_INCOMPATIBLE_INTERFACE;
+-    }
++	if (InterfaceVersion != SYSCALL_IF_VERSION_KM)
++	{
++		LOG_ERROR("Usermode interface 0x%x incompatible with KM!\n", InterfaceVersion);
++		return STATUS_INCOMPATIBLE_INTERFACE;
++	}
+ 
+-    return STATUS_SUCCESS;
++	return STATUS_SUCCESS;
+ }
+ 
+-// STUDENT TODO: implement the rest of the syscalls
+\ No newline at end of file
++// STUDENT TODO: implement the rest of the syscalls
++STATUS
++SyscallProcessExit(
++	IN      STATUS                  ExitStatus
++)
++{
++	PPROCESS Process;
++	Process = GetCurrentProcess();
++	Process->TerminationStatus = ExitStatus;
++	ProcessTerminate(Process);
++	return STATUS_SUCCESS;
++
++}
++
++STATUS
++SyscallThreadExit(
++	IN  STATUS                      ExitStatus
++)
++{
++	ThreadExit(ExitStatus);
++	return STATUS_SUCCESS;
++}
++
++STATUS
++SyscallFileWrite(
++	IN  UM_HANDLE                   FileHandle,
++	IN_READS_BYTES(BytesToWrite)
++	PVOID                       Buffer,
++	IN  QWORD                       BytesToWrite,
++	OUT QWORD* BytesWritten
++)
++{
++	if (BytesWritten == NULL) {
++		return STATUS_UNSUCCESSFUL;
++
++	}
++
++	if (FileHandle == UM_FILE_HANDLE_STDOUT) {
++
++		*BytesWritten = BytesToWrite;
++		LOG("[%s]:[%s]\n", ProcessGetName(NULL), Buffer);
++		return STATUS_SUCCESS;
++
++
++	}
++
++	*BytesWritten = BytesToWrite;
++	return STATUS_SUCCESS;
++}
++STATUS
++SyscallVirtualAlloc(
++	IN_OPT      PVOID                   BaseAddress,
++	IN          QWORD                   Size,
++	IN          VMM_ALLOC_TYPE          AllocType,
++	IN          PAGE_RIGHTS             PageRights,
++	IN_OPT      UM_HANDLE               FileHandle,
++	IN_OPT      QWORD                   Key,
++	OUT         PVOID* AllocatedAddress
++)
++{
++	UNREFERENCED_PARAMETER(Key);
++	UNREFERENCED_PARAMETER(FileHandle)
++		PVOID address = VmmAllocRegionEx(BaseAddress, Size, AllocType, PageRights, FALSE, NULL, NULL, NULL, NULL);
++	*AllocatedAddress = address;
++	return STATUS_SUCCESS;
++}
+\ No newline at end of file
+diff --git a/src/HAL9000/src/system.c b/src/HAL9000/src/system.c
+index b0b436e..4479152 100644
+--- a/src/HAL9000/src/system.c
++++ b/src/HAL9000/src/system.c
+@@ -27,8 +27,8 @@ STATIC_ASSERT(NO_OF_TSS_STACKS <= NO_OF_IST);
+ 
+ typedef struct _SYSTEM_DATA
+ {
+-    BYTE        NumberOfTssStacks;
+-} SYSTEM_DATA, *PSYSTEM_DATA;
++	BYTE        NumberOfTssStacks;
++} SYSTEM_DATA, * PSYSTEM_DATA;
+ 
+ static SYSTEM_DATA m_systemData;
+ 
+@@ -36,295 +36,295 @@ QWORD gVirtualToPhysicalOffset;
+ 
+ void
+ SystemPreinit(
+-    void
+-    )
++	void
++)
+ {
+-    memzero(&m_systemData, sizeof(SYSTEM_DATA));
+-
+-    m_systemData.NumberOfTssStacks = NO_OF_TSS_STACKS;
+-
+-    BootModulesPreinit();
+-    DumpPreinit();
+-    ThreadSystemPreinit();
+-    printSystemPreinit(NULL);
+-    LogSystemPreinit();
+-    OsInfoPreinit();
+-    MmuPreinitSystem();
+-    IomuPreinitSystem();
+-    AcpiInterfacePreinit();
+-    SmpPreinit();
+-    PciSystemPreinit();
+-    CorePreinit();
+-    NetworkStackPreinit();
+-    ProcessSystemPreinit();
++	memzero(&m_systemData, sizeof(SYSTEM_DATA));
++
++	m_systemData.NumberOfTssStacks = NO_OF_TSS_STACKS;
++
++	BootModulesPreinit();
++	DumpPreinit();
++	ThreadSystemPreinit();
++	printSystemPreinit(NULL);
++	LogSystemPreinit();
++	OsInfoPreinit();
++	MmuPreinitSystem();
++	IomuPreinitSystem();
++	AcpiInterfacePreinit();
++	SmpPreinit();
++	PciSystemPreinit();
++	CorePreinit();
++	NetworkStackPreinit();
++	ProcessSystemPreinit();
+ }
+ 
+ STATUS
+ SystemInit(
+-    IN  ASM_PARAMETERS*     Parameters
+-    )
++	IN  ASM_PARAMETERS* Parameters
++)
+ {
+-    STATUS status;
+-    PCPU* pCpu;
+-
+-    status = STATUS_SUCCESS;
+-    pCpu = NULL;
+-
+-    LogSystemInit(LogLevelInfo,
+-                  LogComponentInterrupt | LogComponentIo | LogComponentAcpi,
+-                  TRUE
+-                  );
+-
+-    // if validation fails => the system will HALT
+-    CpuMuValidateConfiguration();
+-
+-    HalInitialize();
+-
+-    // install new GDT table
+-    status = GdtMuInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("GdtMuInit", status);
+-        return status;
+-    }
+-
+-    // initialize serial communication
+-    status = SerialCommunicationInitialize(Parameters->BiosSerialPorts, BIOS_MAX_NO_OF_SERIAL_PORTS);
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("SerialCommunicationInitialize", status);
+-        return status;
+-    }
+-
+-    LOG("Serial communications initialized\n");
+-    LOG("Running HAL9000 %s version %s built on %s\n",
+-        OsGetBuildType(),
+-        OsGetVersion(),
+-        OsGetBuildDate()
+-        );
+-
+-    status = OsInfoInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("OsInfoInit", status);
+-        return status;
+-    }
+-
+-    LOGL("OsInfoInit succeeded\n");
+-
+-    status = CpuMuActivateFpuFeatures();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("CpuMuActivateFpuFeatures", status);
+-        return status;
+-    }
+-
+-    LOGL("CpuMuActivateFpuFeatures succeeded\n");
+-
+-    // IDT handlers need to be initialized before
+-    // MmuInitSystem is called because the VMM
+-    // needs page fault handling to allocate memory
+-    status = InitIdtHandlers(GdtMuGetCS64Supervisor(), 0);
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("InitIdtHandlers", status);
+-        return status;
+-    }
+-
+-    LOGL("InitIdtHandlers succeeded\n");
+-
+-    status = MmuInitSystem(Parameters->KernelBaseAddress,
+-                           (DWORD) Parameters->KernelSize,
+-                           Parameters->MemoryMapAddress,
+-                           Parameters->MemoryMapEntries
+-                           );
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("MmuInitSystem", status);
+-        return status;
+-    }
+-
+-    LOGL("MmuInitSystem succeeded\n");
+-
+-    if (IsBooleanFlagOn(Parameters->MultibootInformation->Flags, MULTIBOOT_FLAG_BOOT_MODULES_PRESENT))
+-    {
+-        status = BootModulesInit((PHYSICAL_ADDRESS)(QWORD)Parameters->MultibootInformation->ModuleAddress,
+-                                Parameters->MultibootInformation->ModuleCount);
+-        if (!SUCCEEDED(status))
+-        {
+-            LOG_FUNC_ERROR("BootModulesMap", status);
+-            return status;
+-        }
+-    }
+-
+-    status = IomuInitSystemDriver();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("IomuInitSystemDriver", status);
+-        return status;
+-    }
+-    LOGL("IomuInitSystemDriver suceeded\n");
+-
+-    // initialize ACPI interface
+-    status = AcpiInterfaceInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("AcpiInterfaceInit", status);
+-        return status;
+-    }
+-    LOGL("AcpiInterfaceInit suceeded\n");
+-
+-    status = LapicSystemInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("LapicSystemInit", status);
+-        return status;
+-    }
+-    LOGL("LapicSystemInit suceeded\n");
+-
+-    status = SmpInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("SmpInit", status);
+-        return status;
+-    }
+-
+-    LOGL("SmpInit succeded\n");
+-
+-    // allocate PCPU structure for the BSP
+-    // this needs to be before the call to IomuInitSystem because
+-    // by the time we enable interrupts we want our TSS descriptor to be installed
+-    status = CpuMuAllocAndInitCpu(&pCpu,
+-    // C28039: The type of actual parameter 'CpuGetApicId()' should exactly match the type 'APIC_ID'
++	STATUS status;
++	PCPU* pCpu;
++
++	status = STATUS_SUCCESS;
++	pCpu = NULL;
++
++	LogSystemInit(LogLevelInfo,
++		LogComponentInterrupt | LogComponentIo | LogComponentAcpi | LogComponentUserMode,
++		TRUE
++	);
++
++	// if validation fails => the system will HALT
++	CpuMuValidateConfiguration();
++
++	HalInitialize();
++
++	// install new GDT table
++	status = GdtMuInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("GdtMuInit", status);
++		return status;
++	}
++
++	// initialize serial communication
++	status = SerialCommunicationInitialize(Parameters->BiosSerialPorts, BIOS_MAX_NO_OF_SERIAL_PORTS);
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("SerialCommunicationInitialize", status);
++		return status;
++	}
++
++	LOG("Serial communications initialized\n");
++	LOG("Running HAL9000 %s version %s built on %s\n",
++		OsGetBuildType(),
++		OsGetVersion(),
++		OsGetBuildDate()
++	);
++
++	status = OsInfoInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("OsInfoInit", status);
++		return status;
++	}
++
++	LOGL("OsInfoInit succeeded\n");
++
++	status = CpuMuActivateFpuFeatures();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("CpuMuActivateFpuFeatures", status);
++		return status;
++	}
++
++	LOGL("CpuMuActivateFpuFeatures succeeded\n");
++
++	// IDT handlers need to be initialized before
++	// MmuInitSystem is called because the VMM
++	// needs page fault handling to allocate memory
++	status = InitIdtHandlers(GdtMuGetCS64Supervisor(), 0);
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("InitIdtHandlers", status);
++		return status;
++	}
++
++	LOGL("InitIdtHandlers succeeded\n");
++
++	status = MmuInitSystem(Parameters->KernelBaseAddress,
++		(DWORD)Parameters->KernelSize,
++		Parameters->MemoryMapAddress,
++		Parameters->MemoryMapEntries
++	);
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("MmuInitSystem", status);
++		return status;
++	}
++
++	LOGL("MmuInitSystem succeeded\n");
++
++	if (IsBooleanFlagOn(Parameters->MultibootInformation->Flags, MULTIBOOT_FLAG_BOOT_MODULES_PRESENT))
++	{
++		status = BootModulesInit((PHYSICAL_ADDRESS)(QWORD)Parameters->MultibootInformation->ModuleAddress,
++			Parameters->MultibootInformation->ModuleCount);
++		if (!SUCCEEDED(status))
++		{
++			LOG_FUNC_ERROR("BootModulesMap", status);
++			return status;
++		}
++	}
++
++	status = IomuInitSystemDriver();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("IomuInitSystemDriver", status);
++		return status;
++	}
++	LOGL("IomuInitSystemDriver suceeded\n");
++
++	// initialize ACPI interface
++	status = AcpiInterfaceInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("AcpiInterfaceInit", status);
++		return status;
++	}
++	LOGL("AcpiInterfaceInit suceeded\n");
++
++	status = LapicSystemInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("LapicSystemInit", status);
++		return status;
++	}
++	LOGL("LapicSystemInit suceeded\n");
++
++	status = SmpInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("SmpInit", status);
++		return status;
++	}
++
++	LOGL("SmpInit succeded\n");
++
++	// allocate PCPU structure for the BSP
++	// this needs to be before the call to IomuInitSystem because
++	// by the time we enable interrupts we want our TSS descriptor to be installed
++	status = CpuMuAllocAndInitCpu(&pCpu,
++		// C28039: The type of actual parameter 'CpuGetApicId()' should exactly match the type 'APIC_ID'
+ #pragma warning(suppress: 28039)
+-                                  CpuGetApicId(),
+-                                  STACK_DEFAULT_SIZE,
+-                                  m_systemData.NumberOfTssStacks
+-                                  );
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("CpuMuAllocAndInitCpu", status);
+-        return status;
+-    }
+-    LOGL("CpuMuAllocAndInitCpu succeeded\n");
+-
+-    // initialize IO system
+-    // this also initializes the IDT
+-    status = IomuInitSystem(GdtMuGetCS64Supervisor(),m_systemData.NumberOfTssStacks );
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("IomuInitSystem", status);
+-        return status;
+-    }
+-
+-    LOGL("IomuInitSystem succeeded\n");
+-
+-    status = CoreInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("CoreInit", status);
+-        return status;
+-    }
+-
+-    LOGL("CoreInit succeeded\n");
+-
+-    status = SmpSetupLowerMemory(m_systemData.NumberOfTssStacks);
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("SmpSetupLowerMemory", status);
+-        return status;
+-    }
+-
+-    LOGL("SmpSetupLowerMemory succeded\n");
+-
+-    status = ProcessSystemInitSystemProcess();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("ProcessSystemInitSystemProcess", status);
+-        return status;
+-    }
+-
+-    LOGL("Successfully intiialized system process!\n");
+-
+-    status = ThreadSystemInitIdleForCurrentCPU();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("ThreadSystemInitIdleForCurrentCPU", status);
+-        return status;
+-    }
+-
+-    LOGL("ThreadSystemInitIdleForCurrentCPU succeeded\n");
+-
+-    status = AcpiInterfaceLateInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("AcpiInterfaceLateInit", status);
+-        return status;
+-    }
+-    LOGL("AcpiInterfaceLateInit succeeded\n");
+-
+-    SmpWakeupAps();
+-    LOGL("SmpWakeupAps completed\n");
+-
+-    // finish IOMU initialization
+-    status = IomuInitSystemAfterApWakeup();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("IomuInitSystemAfterApWakeup", status);
+-        return status;
+-    }
+-    LOGL("IomuInitSystemAfterApWakeup succeeded\n");
+-
+-    // we no longer need the lower memory mappings
+-    SmpCleanupLowerMemory();
+-
+-    LOGL("SmpCleanupLowerMemory completed\n");
+-
+-    // After the APs have woken up we no longer need the 1:1 VA->PA mappings
+-    MmuDiscardIdentityMappings();
+-
+-    LOGL("MmuDiscardIdentityMappings completed\n");
+-
+-    status = MmuInitThreadingSystem();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("MmuInitThreadingSystem", status );
+-        return status;
+-    }
+-
+-    LOGL("MmuInitThreadingSystem succeded\n");
+-
+-    // IOMU late initialization: drivers + system partition determination
+-    status = IomuLateInit();
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("IomuLateInit", status);
+-        return status;
+-    }
+-
+-    LOGL("IOMU late initialization successfully completed\n");
+-
+-    status = NetworkStackInit(FALSE);
+-    if (!SUCCEEDED(status))
+-    {
+-        LOG_FUNC_ERROR("NetworkStackInit", status);
+-        return status;
+-    }
+-
+-    LOGL("Network stack successfully initialized\n");
+-
+-    return status;
++		CpuGetApicId(),
++		STACK_DEFAULT_SIZE,
++		m_systemData.NumberOfTssStacks
++	);
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("CpuMuAllocAndInitCpu", status);
++		return status;
++	}
++	LOGL("CpuMuAllocAndInitCpu succeeded\n");
++
++	// initialize IO system
++	// this also initializes the IDT
++	status = IomuInitSystem(GdtMuGetCS64Supervisor(), m_systemData.NumberOfTssStacks);
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("IomuInitSystem", status);
++		return status;
++	}
++
++	LOGL("IomuInitSystem succeeded\n");
++
++	status = CoreInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("CoreInit", status);
++		return status;
++	}
++
++	LOGL("CoreInit succeeded\n");
++
++	status = SmpSetupLowerMemory(m_systemData.NumberOfTssStacks);
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("SmpSetupLowerMemory", status);
++		return status;
++	}
++
++	LOGL("SmpSetupLowerMemory succeded\n");
++
++	status = ProcessSystemInitSystemProcess();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("ProcessSystemInitSystemProcess", status);
++		return status;
++	}
++
++	LOGL("Successfully intiialized system process!\n");
++
++	status = ThreadSystemInitIdleForCurrentCPU();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("ThreadSystemInitIdleForCurrentCPU", status);
++		return status;
++	}
++
++	LOGL("ThreadSystemInitIdleForCurrentCPU succeeded\n");
++
++	status = AcpiInterfaceLateInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("AcpiInterfaceLateInit", status);
++		return status;
++	}
++	LOGL("AcpiInterfaceLateInit succeeded\n");
++
++	SmpWakeupAps();
++	LOGL("SmpWakeupAps completed\n");
++
++	// finish IOMU initialization
++	status = IomuInitSystemAfterApWakeup();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("IomuInitSystemAfterApWakeup", status);
++		return status;
++	}
++	LOGL("IomuInitSystemAfterApWakeup succeeded\n");
++
++	// we no longer need the lower memory mappings
++	SmpCleanupLowerMemory();
++
++	LOGL("SmpCleanupLowerMemory completed\n");
++
++	// After the APs have woken up we no longer need the 1:1 VA->PA mappings
++	MmuDiscardIdentityMappings();
++
++	LOGL("MmuDiscardIdentityMappings completed\n");
++
++	status = MmuInitThreadingSystem();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("MmuInitThreadingSystem", status);
++		return status;
++	}
++
++	LOGL("MmuInitThreadingSystem succeded\n");
++
++	// IOMU late initialization: drivers + system partition determination
++	status = IomuLateInit();
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("IomuLateInit", status);
++		return status;
++	}
++
++	LOGL("IOMU late initialization successfully completed\n");
++
++	status = NetworkStackInit(FALSE);
++	if (!SUCCEEDED(status))
++	{
++		LOG_FUNC_ERROR("NetworkStackInit", status);
++		return status;
++	}
++
++	LOGL("Network stack successfully initialized\n");
++
++	return status;
+ }
+ 
+ void
+ SystemUninit(
+-    void
+-    )
++	void
++)
+ {
+-    LOGL("Finished command execution\n");
++	LOGL("Finished command execution\n");
+ 
+-    LOGL("%s terminating!\n", OsInfoGetName());
++	LOGL("%s terminating!\n", OsInfoGetName());
+ 
+-    // disable interrupts
+-    CpuIntrDisable();
++	// disable interrupts
++	CpuIntrDisable();
+ }
+\ No newline at end of file
+diff --git a/src/HAL9000/src/thread.c b/src/HAL9000/src/thread.c
+index b311f0c..978f0bd 100644
+--- a/src/HAL9000/src/thread.c
++++ b/src/HAL9000/src/thread.c
+@@ -950,7 +950,8 @@ _ThreadSetupMainThreadUserStack(
+     ASSERT(ResultingStack != NULL);
+     ASSERT(Process != NULL);
+ 
+-    *ResultingStack = InitialStack;
++    //*ResultingStack = InitialStack;
++    *ResultingStack = (PVOID)PtrDiff(InitialStack, SHADOW_STACK_SIZE + sizeof(PVOID));
+ 
+     return STATUS_SUCCESS;
+ }
+diff --git a/src/HAL9000/src/vmm.c b/src/HAL9000/src/vmm.c
+index a70a2cb..511e9ce 100644
+--- a/src/HAL9000/src/vmm.c
++++ b/src/HAL9000/src/vmm.c
+@@ -13,6 +13,14 @@
+ 
+ #define VMM_SIZE_FOR_RESERVATION_METADATA            (5*TB_SIZE)
+ 
++static
++void
++_VmmAddFrameMappings(
++    IN          PHYSICAL_ADDRESS    PhysicalAddress,
++    IN          PVOID               VirtualAddress,
++    IN          DWORD               FrameCount
++);
++
+ typedef struct _VMM_DATA
+ {
+     VMM_RESERVATION_SPACE   VmmReservationSpace;
+@@ -65,6 +73,16 @@ typedef struct _VMM_RETRIEVE_PHYS_ACCESS_PAGE_WALK_CONTEXT
+     BOOLEAN                         ClearDirty;
+ } VMM_RETRIEVE_PHYS_ACCESS_PAGE_WALK_CONTEXT, *PVMM_RETRIEVE_PHYS_ACCESS_PAGE_WALK_CONTEXT;
+ 
++typedef struct _FRAME_MAPPING
++{
++    PHYSICAL_ADDRESS    PhysicalAddress;
++    PVOID               VirtualAddress;
++
++    QWORD               AccessCount;
++
++    LIST_ENTRY          ListEntry;
++} FRAME_MAPPING, * PFRAME_MAPPING;
++
+ static VMM_DATA m_vmmData;
+ 
+ static
+@@ -609,6 +627,11 @@ VmmAllocRegionEx(
+                                      PagingData
+                 );
+ 
++                if (PagingData != NULL && !PagingData->Data.KernelSpace)
++                {
++                    _VmmAddFrameMappings(pa, pBaseAddress, noOfFrames);
++                }
++
+                 // Check if the mapping is backed up by a file
+                 if (FileObject != NULL)
+                 {
+@@ -726,7 +749,24 @@ VmmFreeRegionEx(
+                          alignedSize,
+                          Release,
+                          PagingData);
++
++
++    }
++    PPROCESS currentProcess = GetCurrentProcess();
++    INTR_STATE dummyState;
++    PLIST_ENTRY currentHead = currentProcess->FrameMappingsHead.Blink;
++    LockAcquire(&currentProcess->FrameMapLock, &dummyState);
++    while (currentHead != &currentProcess->FrameMappingsHead) {
++        PFRAME_MAPPING frameMap = CONTAINING_RECORD(currentHead, FRAME_MAPPING, ListEntry);
++        if (frameMap->VirtualAddress == alignedAddress) {
++            MmuUnmapMemoryEx(alignedAddress,
++                alignedSize,
++                Release,
++                PagingData);
++        }
+     }
++    LockRelease(&currentProcess->FrameMapLock, dummyState);
++
+ }
+ 
+ BOOLEAN
+@@ -814,6 +854,11 @@ VmmSolvePageFault(
+                                  PagingData
+                                  );
+ 
++            if (!PagingData->Data.KernelSpace)
++            {
++                _VmmAddFrameMappings(pa, alignedAddress, 1);
++            }
++
+             // 3. If the virtual address is backed by a file read its contents
+             if (pBackingFile != NULL)
+             {
+@@ -1370,4 +1415,40 @@ BOOLEAN
+     }
+ 
+     return bContinue;
++}
++//lab11
++static
++void
++_VmmAddFrameMappings(
++    IN          PHYSICAL_ADDRESS    PhysicalAddress,
++    IN          PVOID               VirtualAddress,
++    IN          DWORD               FrameCount
++)
++{
++    PPROCESS pProcess;
++    PFRAME_MAPPING pMapping;
++    INTR_STATE intrState;
++
++    pProcess = GetCurrentProcess();
++
++    if (ProcessIsSystem(pProcess))
++    {
++        return;
++    }
++
++    for (DWORD i = 0; i < FrameCount; ++i)
++    {
++        pMapping = ExAllocatePoolWithTag(PoolAllocatePanicIfFail, sizeof(FRAME_MAPPING), HEAP_MMU_TAG, 0);
++
++        pMapping->PhysicalAddress = PtrOffset(PhysicalAddress, i * PAGE_SIZE);
++        pMapping->VirtualAddress = PtrOffset(VirtualAddress, i * PAGE_SIZE);
++        pMapping->AccessCount = 1;
++
++        LockAcquire(&pProcess->FrameMapLock, &intrState);
++        InsertTailList(&pProcess->FrameMappingsHead, &pMapping->ListEntry);
++        LockRelease(&pProcess->FrameMapLock, intrState);
++
++        LOG("Allocated entry from 0x%X -> 0x%X\n",
++            pMapping->VirtualAddress, pMapping->PhysicalAddress);
++    }
+ }
+\ No newline at end of file
