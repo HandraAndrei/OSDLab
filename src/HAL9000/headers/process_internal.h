@@ -5,6 +5,7 @@
 #include "process.h"
 #include "synch.h"
 #include "ex_event.h"
+#include "syscall_defs.h"
 
 #define PROCESS_MAX_PHYSICAL_FRAMES     16
 #define PROCESS_MAX_OPEN_FILES          16
@@ -38,6 +39,11 @@ typedef struct _PROCESS
     _Guarded_by_(ThreadListLock)
     LIST_ENTRY                      ThreadList;
 
+    LOCK                    HandleListLock;
+
+    _Guarded_by_(HandleListLock)
+    LIST_ENTRY              HandleThreadList;
+
     _Guarded_by_(ThreadListLock)
     volatile DWORD                  NumberOfThreads;
 
@@ -59,6 +65,12 @@ typedef struct _PROCESS
     // VaSpace used only for UM virtual memory allocations
     struct _VMM_RESERVATION_SPACE*  VaSpace;
 } PROCESS, *PPROCESS;
+
+typedef struct _HANDLE_THREAD {
+    UM_HANDLE Handle;
+    PTHREAD Thread;
+    LIST_ENTRY HandleThreadList;
+} HANDLE_THREAD, *PHANDLE_THREAD;
 
 //******************************************************************************
 // Function:     ProcessSystemPreinit

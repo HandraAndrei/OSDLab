@@ -799,6 +799,7 @@ _ThreadInit(
         LockAcquire(&m_threadSystemData.AllThreadsLock, &oldIntrState);
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
+
     }
     __finally
     {
@@ -946,6 +947,7 @@ _ThreadSetupMainThreadUserStack(
     IN      PPROCESS            Process
     )
 {
+    
     ASSERT(InitialStack != NULL);
     ASSERT(ResultingStack != NULL);
     ASSERT(Process != NULL);
@@ -954,6 +956,100 @@ _ThreadSetupMainThreadUserStack(
     *ResultingStack = (PVOID)PtrDiff(InitialStack, SHADOW_STACK_SIZE + sizeof(PVOID));
 
     return STATUS_SUCCESS;
+    /*
+    ASSERT(InitialStack != NULL);
+    ASSERT(ResultingStack != NULL);
+    ASSERT(Process != NULL);
+
+    *ResultingStack = (PVOID)PtrDiff(InitialStack, SHADOW_STACK_SIZE + sizeof(PVOID));
+
+    PVOID MappedStack;
+    PVOID InitialStackCopy = InitialStack;
+    MmuGetSystemVirtualAddressForUserBuffer((PVOID)PtrDiff(InitialStack, STACK_DEFAULT_SIZE),
+        STACK_DEFAULT_SIZE, PAGE_RIGHTS_READWRITE, Process,
+        &MappedStack);
+
+    MappedStack = (PVOID)PtrOffset(MappedStack, STACK_DEFAULT_SIZE);
+    char* commandLine = Process->FullCommandLine;
+    // const QWORD nrOfArguments = Process->NumberOfArguments;
+    char* context;
+    context = NULL;
+    const char* token = strtok_s(commandLine, " ", &context);
+    QWORD len = 0;
+    QWORD addressList[100];
+    int counter = 0;
+    QWORD sumOfLengths = 0;
+    QWORD shadowSpace = 0xDead'Beef;
+
+    while (token != NULL) {
+        len = strlen(token);
+        QWORD stringLength = len + 1;
+
+        MappedStack = (PVOID)PtrDiff(MappedStack, stringLength);
+        InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, stringLength);
+
+        strcpy(MappedStack, token);
+        addressList[counter++] = (QWORD)InitialStackCopy;
+        sumOfLengths += stringLength;
+        token = strtok_s(NULL, " ", &context);
+    }
+    QWORD totalBytesOfTheStack = sumOfLengths + Process->NumberOfArguments * sizeof(char*) + sizeof(char**) + sizeof(void*) + sizeof(void*)
+        + sizeof(char**) + sizeof(QWORD);
+
+    QWORD offset;
+
+    if (totalBytesOfTheStack % 8 == 0) {
+        offset = totalBytesOfTheStack / 8;
+    }
+    else {
+        offset = totalBytesOfTheStack / 8 + 1;
+    }
+
+    if (offset % 2 == 0) {
+        offset++;
+    }
+    QWORD alignment = offset * 8 - totalBytesOfTheStack;
+    MappedStack = (PVOID)PtrDiff(MappedStack, alignment);
+    InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, alignment);
+    QWORD finalAddress;
+    for (int i = counter - 1; i >= 0; i--) {
+        MappedStack = (PVOID)PtrDiff(MappedStack, 8);
+        InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, 8);
+        if (i == 0) {
+            finalAddress = (QWORD)InitialStackCopy;
+        }
+        memcpy(MappedStack, &addressList[i], sizeof(addressList[i]));
+    }
+
+    //go over shadow space
+    MappedStack = (PVOID)PtrDiff(MappedStack, sizeof(QWORD));
+    InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, sizeof(QWORD));
+    memcpy(MappedStack, &shadowSpace, sizeof(QWORD));
+
+    MappedStack = (PVOID)PtrDiff(MappedStack, sizeof(QWORD));
+    InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, sizeof(QWORD));
+    memcpy(MappedStack, &shadowSpace, sizeof(QWORD));
+
+    MappedStack = (PVOID)PtrDiff(MappedStack, sizeof(QWORD));
+    InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, sizeof(QWORD));
+    memcpy(MappedStack, &finalAddress, sizeof(QWORD));
+
+    //add argc
+    MappedStack = (PVOID)PtrDiff(MappedStack, sizeof(QWORD));
+    InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, sizeof(QWORD));
+    memcpy(MappedStack, &Process->NumberOfArguments, sizeof(QWORD));
+
+    QWORD returnAddress = 0xDead;
+    //add return address
+    MappedStack = (PVOID)PtrDiff(MappedStack, sizeof(QWORD));
+    InitialStackCopy = (PVOID)PtrDiff(InitialStackCopy, sizeof(QWORD));
+    memcpy(MappedStack, &returnAddress, sizeof(QWORD));
+    ResultingStack = InitialStackCopy;
+
+    MmuFreeSystemVirtualAddressForUserBuffer(MappedStack);
+
+    return STATUS_SUCCESS;
+    */
 }
 
 REQUIRES_EXCL_LOCK(m_threadSystemData.ReadyThreadsLock)

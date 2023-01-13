@@ -35,7 +35,6 @@ __main(
             LOG_FUNC_ERROR("UmThreadCreate", status);
             __leave;
         }
-
         status = SyscallThreadCloseHandle(hThread);
         if (!SUCCEEDED(status))
         {

@@ -507,6 +507,9 @@ _ProcessInit(
         InitializeListHead(&pProcess->ThreadList);
         LockInit(&pProcess->ThreadListLock);
 
+        LockInit(&pProcess->HandleListLock);
+        InitializeListHead(&pProcess->HandleThreadList);
+
         // Do this as late as possible - we want to interfere as little as possible
         // with the system management in case something goes wrong (PID + full process
         // list management)
