@@ -14,6 +14,8 @@
 
 #define THREAD_TIME_SLICE           1
 
+QWORD time = 0;
+
 extern void ThreadStart();
 
 typedef
@@ -36,6 +38,11 @@ typedef struct _THREAD_SYSTEM_DATA
 
     _Guarded_by_(ReadyThreadsLock)
     LIST_ENTRY          ReadyThreadsList;
+
+    LOCK                    listOrderLock;
+
+    _Guarded_by_(listOrderLock)
+    LIST_ENTRY              orderByTime;
 } THREAD_SYSTEM_DATA, *PTHREAD_SYSTEM_DATA;
 
 static THREAD_SYSTEM_DATA m_threadSystemData;
@@ -145,6 +152,9 @@ ThreadSystemPreinit(
 
     InitializeListHead(&m_threadSystemData.ReadyThreadsList);
     LockInit(&m_threadSystemData.ReadyThreadsLock);
+
+    InitializeListHead(&m_threadSystemData.orderByTime);
+    LockInit(&m_threadSystemData.listOrderLock);
 }
 
 STATUS
@@ -799,6 +809,13 @@ _ThreadInit(
         LockAcquire(&m_threadSystemData.AllThreadsLock, &oldIntrState);
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
+
+        pThread->timeStamp = time;
+        time++;
+
+        LockAcquire(&m_threadSystemData.listOrderLock, &oldIntrState);
+        InsertOrderedList(&m_threadSystemData.orderByTime, &pThread->orderListEntry,ThreadCompareOrderByTimeList,NULL);
+        LockRelease(&m_threadSystemData.listOrderLock, oldIntrState);
     }
     __finally
     {
@@ -1239,4 +1256,29 @@ _ThreadKernelFunction(
 
     ThreadExit(exitStatus);
     NOT_REACHED;
+}
+
+
+PFUNC_CompareFunction
+ThreadCompareOrderByTimeList(
+    IN PLIST_ENTRY e1,
+    IN PLIST_ENTRY e2,
+    IN_OPT PVOID Context)
+{
+    UNREFERENCED_PARAMETER(Context);
+    PTHREAD pTh1, pTh2;
+    pTh1 = CONTAINING_RECORD(e1, THREAD, orderListEntry);
+    pTh2 = CONTAINING_RECORD(e2, THREAD, orderListEntry);
+
+    DWORD timeTh1 = pTh1->timeStamp;
+    DWORD timeTh2 = pTh2->timeStamp;
+
+    if (timeTh1 < timeTh2) {
+        return 1;
+    }
+    else if (timeTh1 > timeTh2) {
+        return -1;
+    }
+    return 0;
+
 }
