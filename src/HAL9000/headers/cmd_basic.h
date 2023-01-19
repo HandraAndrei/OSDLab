@@ -13,3 +13,5 @@ FUNC_GenericCommand CmdSetLogComponents;
 FUNC_GenericCommand CmdClearScreen;
 FUNC_GenericCommand CmdRunAllFunctionalTests;
 FUNC_GenericCommand CmdRunAllPerformanceTests;
+
+FUNC_GenericCommand CmdMyTest;

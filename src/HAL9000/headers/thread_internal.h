@@ -89,6 +89,8 @@ typedef struct _THREAD
     // MUST be non-NULL for all threads which belong to user-mode processes
     PVOID                   UserStack;
 
+    TID                     ParentThread;
+
     struct _PROCESS*        Process;
 } THREAD, *PTHREAD;
 
@@ -252,6 +254,12 @@ ThreadExecuteForEachThreadEntry(
     IN_OPT  PVOID               Context
     );
 
+STATUS
+ThreadExecuteForEachReadyThreadEntry(
+    IN      PFUNC_ListFunction  Function,
+    IN_OPT  PVOID               Context
+);
+
 
 //******************************************************************************O
 // Function:     GetCurrentThread
@@ -282,3 +290,6 @@ void
 ThreadSetPriority(
     IN      THREAD_PRIORITY     NewPriority
     );
+
+QWORD
+GetNrOfThreads();

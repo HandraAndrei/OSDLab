@@ -14,3 +14,5 @@ FUNC_GenericCommand CmdRdmsr;
 FUNC_GenericCommand CmdWrmsr;
 FUNC_GenericCommand CmdCheckAd;
 FUNC_GenericCommand CmdSpawnThreads;
+
+FUNC_GenericCommand CmdListReadyThreads;

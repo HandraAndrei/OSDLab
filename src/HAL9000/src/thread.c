@@ -36,6 +36,9 @@ typedef struct _THREAD_SYSTEM_DATA
 
     _Guarded_by_(ReadyThreadsLock)
     LIST_ENTRY          ReadyThreadsList;
+
+    QWORD               NumberOfThreads;
+
 } THREAD_SYSTEM_DATA, *PTHREAD_SYSTEM_DATA;
 
 static THREAD_SYSTEM_DATA m_threadSystemData;
@@ -142,7 +145,7 @@ ThreadSystemPreinit(
 
     InitializeListHead(&m_threadSystemData.AllThreadsList);
     LockInit(&m_threadSystemData.AllThreadsLock);
-
+    m_threadSystemData.NumberOfThreads = 0;
     InitializeListHead(&m_threadSystemData.ReadyThreadsList);
     LockInit(&m_threadSystemData.ReadyThreadsLock);
 }
@@ -690,6 +693,33 @@ ThreadExecuteForEachThreadEntry(
     return status;
 }
 
+STATUS
+ThreadExecuteForEachReadyThreadEntry(
+    IN      PFUNC_ListFunction  Function,
+    IN_OPT  PVOID               Context
+)
+{
+    STATUS status;
+    INTR_STATE oldState;
+
+    if (NULL == Function)
+    {
+        return STATUS_INVALID_PARAMETER1;
+    }
+
+    status = STATUS_SUCCESS;
+
+    LockAcquire(&m_threadSystemData.ReadyThreadsLock, &oldState);
+    status = ForEachElementExecute(&m_threadSystemData.ReadyThreadsList,
+        Function,
+        Context,
+        FALSE
+    );
+    LockRelease(&m_threadSystemData.ReadyThreadsLock, oldState);
+
+    return status;
+}
+
 void
 SetCurrentThread(
     IN      PTHREAD     Thread
@@ -793,11 +823,18 @@ _ThreadInit(
         pThread->Id = _ThreadSystemGetNextTid();
         pThread->State = ThreadStateBlocked;
         pThread->Priority = Priority;
+        if (GetCurrentThread() != NULL) {
+            pThread->ParentThread = GetCurrentThread()->Id;
+        }
+        else {
+            pThread->ParentThread = pThread->Id;
+        }
 
         LockInit(&pThread->BlockLock);
 
         LockAcquire(&m_threadSystemData.AllThreadsLock, &oldIntrState);
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
+        m_threadSystemData.NumberOfThreads++;
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
     }
     __finally
@@ -1238,4 +1275,9 @@ _ThreadKernelFunction(
 
     ThreadExit(exitStatus);
     NOT_REACHED;
+}
+
+QWORD
+GetNrOfThreads() {
+    return m_threadSystemData.NumberOfThreads;
 }

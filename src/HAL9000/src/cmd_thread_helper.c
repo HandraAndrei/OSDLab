@@ -45,6 +45,13 @@ static FUNC_ThreadStart     _ThreadCpuBound;
 static FUNC_ThreadStart     _ThreadIoBound;
 
 static
+STATUS
+(__cdecl _CmdReadyThreadPrint) (
+    IN      PLIST_ENTRY     ListEntry,
+    IN_OPT  PVOID           FunctionContext
+    );
+
+static
 void
 _CmdHelperPrintThreadFunctions(
     void
@@ -129,7 +136,9 @@ void
 
     ASSERT(NumberOfParameters == 0);
 
+    LOG("Nr of Threads: %d", GetNrOfThreads());
     LOG("%7s", "TID|");
+    LOG("%7s", "PTID|");
     LOG("%20s", "Name|");
     LOG("%5s", "Prio|");
     LOG("%8s", "State|");
@@ -686,6 +695,7 @@ STATUS
     pThread = CONTAINING_RECORD(ListEntry, THREAD, AllList );
 
     LOG("%6x%c", pThread->Id, '|');
+    LOG("%6X%c", pThread->ParentThread, '|');
     LOG("%19s%c", pThread->Name, '|');
     LOG("%4U%c", pThread->Priority, '|');
     LOG("%7s%c", _CmdThreadStateToName(pThread->State), '|');
@@ -770,6 +780,58 @@ STATUS
         ExEventWaitForSignal(&pCtx->Event);
         _ThreadBusyWait(pCtx->CpuUsage);
     }
+
+    return STATUS_SUCCESS;
+}
+
+void
+(__cdecl CmdListReadyThreads)(
+    IN          QWORD       NumberOfParameters
+    )
+{
+    STATUS status;
+
+    ASSERT(NumberOfParameters == 0);
+
+    LOG("%7s", "TID|");
+    LOG("%7s", "PTID|");
+    LOG("%20s", "Name|");
+    LOG("%5s", "Prio|");
+    LOG("%8s", "State|");
+    LOG("%10s", "Cmp ticks|");
+    LOG("%10s", "Prt ticks|");
+    LOG("%10s", "Ttl ticks|");
+    LOG("%10s", "Process|");
+    LOG("\n");
+
+    status = ThreadExecuteForEachReadyThreadEntry(_CmdReadyThreadPrint, NULL);
+    ASSERT(SUCCEEDED(status));
+}
+
+static
+STATUS
+(__cdecl _CmdReadyThreadPrint) (
+    IN      PLIST_ENTRY     ListEntry,
+    IN_OPT  PVOID           FunctionContext
+    )
+{
+    PTHREAD pThread;
+
+    ASSERT(NULL != ListEntry);
+    ASSERT(NULL == FunctionContext);
+
+    pThread = CONTAINING_RECORD(ListEntry, THREAD, ReadyList);
+
+    LOG("%6x%c", pThread->Id, '|');
+    LOG("%6X%c", pThread->ParentThread, '|');
+    LOG("%19s%c", pThread->Name, '|');
+    LOG("%4U%c", pThread->Priority, '|');
+    LOG("%7s%c", _CmdThreadStateToName(pThread->State), '|');
+    LOG("%9U%c", pThread->TickCountCompleted, '|');
+    LOG("%9U%c", pThread->TickCountEarly, '|');
+    LOG("%9U%c", pThread->TickCountCompleted + pThread->TickCountEarly, '|');
+    LOG("%9x%c", pThread->Process->Id, '|');
+    LOG("\n");
 
     return STATUS_SUCCESS;
 }
