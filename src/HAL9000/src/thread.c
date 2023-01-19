@@ -9,6 +9,7 @@
 #include "isr.h"
 #include "gdtmu.h"
 #include "pe_exports.h"
+#include "iomu.h"
 
 #define TID_INCREMENT               4
 
@@ -36,6 +37,11 @@ typedef struct _THREAD_SYSTEM_DATA
 
     _Guarded_by_(ReadyThreadsLock)
     LIST_ENTRY          ReadyThreadsList;
+
+    LOCK                OrderdByTimeLock;
+
+    _Guarded_by_(OrderdByTimeLock)
+    LIST_ENTRY          OrderByTimeList;
 } THREAD_SYSTEM_DATA, *PTHREAD_SYSTEM_DATA;
 
 static THREAD_SYSTEM_DATA m_threadSystemData;
@@ -132,6 +138,21 @@ _ThreadKernelFunction(
 
 static FUNC_ThreadStart     _IdleThread;
 
+static
+INT64
+CompareTimers(
+    IN LIST_ENTRY t1,
+    IN LIST_ENTRY t2
+)
+{
+    PTHREAD th1 = CONTAINING_RECORD(&t1, THREAD, OrderListEntry);
+    PTHREAD th2 = CONTAINING_RECORD(&t2, THREAD, OrderListEntry);
+    if (th1->CreationTime < th2->CreationTime) {
+        return 1;
+    }
+    return -1;
+}
+
 void
 _No_competing_thread_
 ThreadSystemPreinit(
@@ -145,6 +166,9 @@ ThreadSystemPreinit(
 
     InitializeListHead(&m_threadSystemData.ReadyThreadsList);
     LockInit(&m_threadSystemData.ReadyThreadsLock);
+
+    InitializeListHead(&m_threadSystemData.OrderByTimeList);
+    LockInit(&m_threadSystemData.OrderdByTimeLock);
 }
 
 STATUS
@@ -793,12 +817,17 @@ _ThreadInit(
         pThread->Id = _ThreadSystemGetNextTid();
         pThread->State = ThreadStateBlocked;
         pThread->Priority = Priority;
+        pThread->CreationTime = IomuGetSystemTimeUs();
 
         LockInit(&pThread->BlockLock);
 
         LockAcquire(&m_threadSystemData.AllThreadsLock, &oldIntrState);
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
+
+        LockAcquire(&m_threadSystemData.OrderdByTimeLock, &oldIntrState);
+        InsertOrderedList(&m_threadSystemData.OrderByTimeList, &pThread->OrderListEntry, (PFUNC_CompareFunction)CompareTimers, NULL);
+        LockRelease(&m_threadSystemData.OrderdByTimeLock, oldIntrState);
     }
     __finally
     {

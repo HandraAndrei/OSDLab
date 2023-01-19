@@ -60,6 +60,8 @@ typedef struct _THREAD
     // List of the threads ready to run
     LIST_ENTRY              ReadyList;
 
+    LIST_ENTRY              OrderListEntry;
+
     // List of the threads in the same process
     LIST_ENTRY              ProcessList;
 
@@ -90,6 +92,9 @@ typedef struct _THREAD
     PVOID                   UserStack;
 
     struct _PROCESS*        Process;
+
+    QWORD                   CreationTime;
+
 } THREAD, *PTHREAD;
 
 //******************************************************************************
