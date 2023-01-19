@@ -9,12 +9,11 @@
 #include "isr.h"
 #include "gdtmu.h"
 #include "pe_exports.h"
+#include "iomu.h"
 
 #define TID_INCREMENT               4
 
 #define THREAD_TIME_SLICE           1
-
-QWORD time = 0;
 
 extern void ThreadStart();
 
@@ -810,11 +809,11 @@ _ThreadInit(
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
 
-        pThread->timeStamp = time;
-        time++;
+        pThread->timeStamp = IomuGetSystemTimeUs();
+        
 
         LockAcquire(&m_threadSystemData.listOrderLock, &oldIntrState);
-        InsertOrderedList(&m_threadSystemData.orderByTime, &pThread->orderListEntry,ThreadCompareOrderByTimeList,NULL);
+        InsertOrderedList(&m_threadSystemData.orderByTime, &pThread->orderListEntry,(PFUNC_CompareFunction)ThreadCompareOrderByTimeList,NULL);
         LockRelease(&m_threadSystemData.listOrderLock, oldIntrState);
     }
     __finally
@@ -1258,8 +1257,7 @@ _ThreadKernelFunction(
     NOT_REACHED;
 }
 
-
-PFUNC_CompareFunction
+INT64
 ThreadCompareOrderByTimeList(
     IN PLIST_ENTRY e1,
     IN PLIST_ENTRY e2,
@@ -1270,8 +1268,8 @@ ThreadCompareOrderByTimeList(
     pTh1 = CONTAINING_RECORD(e1, THREAD, orderListEntry);
     pTh2 = CONTAINING_RECORD(e2, THREAD, orderListEntry);
 
-    DWORD timeTh1 = pTh1->timeStamp;
-    DWORD timeTh2 = pTh2->timeStamp;
+    QWORD timeTh1 = pTh1->timeStamp;
+    QWORD timeTh2 = pTh2->timeStamp;
 
     if (timeTh1 < timeTh2) {
         return 1;
