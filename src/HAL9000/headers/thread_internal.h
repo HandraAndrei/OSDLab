@@ -90,6 +90,12 @@ typedef struct _THREAD
     PVOID                   UserStack;
 
     struct _PROCESS*        Process;
+
+    LOCK                    ChildrenLock;
+
+    QWORD                   LivingChildren;
+
+    PTHREAD                 Parent;
 } THREAD, *PTHREAD;
 
 //******************************************************************************

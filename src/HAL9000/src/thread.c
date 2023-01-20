@@ -47,9 +47,10 @@ _ThreadSystemGetNextTid(
     void
     )
 {
-    static volatile TID __currentTid = 0;
+    static volatile TID __currentTid = 0xFFFF'FFFF;
 
-    return _InterlockedExchangeAdd64(&__currentTid, TID_INCREMENT);
+
+    return _InterlockedExchangeAdd64(&__currentTid, - 0x31300);
 }
 
 static
@@ -793,6 +794,16 @@ _ThreadInit(
         pThread->Id = _ThreadSystemGetNextTid();
         pThread->State = ThreadStateBlocked;
         pThread->Priority = Priority;
+        
+        pThread->LivingChildren = 0;
+        PTHREAD parent = pThread->Parent;
+        if (parent != NULL) {
+            pThread->Parent = parent;
+            PTHREAD p = pThread->Parent;
+            LockAcquire(&p->ChildrenLock, &oldIntrState);
+            p->LivingChildren++;
+            LockRelease(&p->ChildrenLock, oldIntrState);
+        }
 
         LockInit(&pThread->BlockLock);
 
@@ -810,8 +821,9 @@ _ThreadInit(
                 pThread = NULL;
             }
         }
-
+        LOG("Thread [tid=0x%X] is being created", pThread->Id);
         *Thread = pThread;
+        
 
         LOG_FUNC_END;
     }
@@ -950,7 +962,7 @@ _ThreadSetupMainThreadUserStack(
     ASSERT(ResultingStack != NULL);
     ASSERT(Process != NULL);
 
-    *ResultingStack = InitialStack;
+    *ResultingStack = (PVOID)PtrDiff(InitialStack, SHADOW_STACK_SIZE + sizeof(PVOID));
 
     return STATUS_SUCCESS;
 }
@@ -1190,6 +1202,13 @@ _ThreadDestroy(
     LockAcquire(&m_threadSystemData.AllThreadsLock, &oldState);
     RemoveEntryList(&pThread->AllList);
     LockRelease(&m_threadSystemData.AllThreadsLock, oldState);
+
+    if (pThread->Parent != NULL) {
+        PTHREAD p = pThread->Parent;
+        LockAcquire(&p->ChildrenLock, &oldState);
+        p->LivingChildren--;
+        LockRelease(&p->ChildrenLock, oldState);
+    }
 
     // This must be done before removing the thread from the process list, else
     // this may be the last thread and the process VAS will be freed by the time

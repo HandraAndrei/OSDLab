@@ -143,6 +143,18 @@ _IsrExceptionHandler(
         LOG_TRACE_EXCEPTION("RSP[0]: 0x%X\n", *((QWORD*)StackPointer->Registers.Rsp));
     }
 
+    if (!exceptionHandled)
+    {
+        if (!GdtIsSegmentPrivileged((WORD)StackPointer->Registers.CS)) {
+            PVOID addr = __readcr2();
+            PPROCESS current = GetCurrentProcess();
+            LOG_TRACE_EXCEPTION("Exception 0x%X(exception name: %s) at address 0x%X will cause the termination of process %s!\n",
+                InterruptIndex, EXCEPTION_NAME[InterruptIndex],addr  ,ProcessGetName(current));
+            //Exception 0x%X(exception name: %s) at address 0x%X will cause the termination of process %s!\n
+            ProcessTerminate(current);
+        }
+    }
+
     // no use in logging if we solved the problem
     if (!exceptionHandled)
     {

@@ -130,6 +130,7 @@ void
     ASSERT(NumberOfParameters == 0);
 
     LOG("%7s", "TID|");
+    LOG("%d", "Children");
     LOG("%20s", "Name|");
     LOG("%5s", "Prio|");
     LOG("%8s", "State|");
@@ -137,6 +138,8 @@ void
     LOG("%10s", "Prt ticks|");
     LOG("%10s", "Ttl ticks|");
     LOG("%10s", "Process|");
+    //LOG("%7s", "PTID");
+    
     LOG("\n");
 
     status = ThreadExecuteForEachThreadEntry(_CmdThreadPrint, NULL );
@@ -685,7 +688,9 @@ STATUS
 
     pThread = CONTAINING_RECORD(ListEntry, THREAD, AllList );
 
+
     LOG("%6x%c", pThread->Id, '|');
+    LOG("%6x%c", pThread->LivingChildren, '|');
     LOG("%19s%c", pThread->Name, '|');
     LOG("%4U%c", pThread->Priority, '|');
     LOG("%7s%c", _CmdThreadStateToName(pThread->State), '|');
@@ -693,6 +698,8 @@ STATUS
     LOG("%9U%c", pThread->TickCountEarly, '|');
     LOG("%9U%c", pThread->TickCountCompleted + pThread->TickCountEarly, '|');
     LOG("%9x%c", pThread->Process->Id, '|');
+    //LOG("%6x%c", pThread->Parent->Id, '|');
+   
     LOG("\n");
 
     return STATUS_SUCCESS;
@@ -774,4 +781,11 @@ STATUS
     return STATUS_SUCCESS;
 }
 
+void
+(__cdecl CmdTestThreadInfo)(
+    IN          QWORD       NumberOfParameters
+    )
+{
+    ASSERT(NumberOfParameters == 0);
+}
 #pragma warning(pop)
